@@ -1,5 +1,6 @@
 import { Scan, Landmark, CreditCard, Lock } from "lucide-react";
 import { formatLak } from "../serviceConfig";
+import { useT, useLang } from "../i18n";
 
 /*
  * Reusable payment UI — QR / Bank transfer / Card. Used by every fee-bearing
@@ -110,16 +111,18 @@ interface PaymentSectionProps {
 }
 
 export function PaymentSection({ amount, serviceName, value, onChange, reference }: PaymentSectionProps) {
+  const t = useT("payment");
+  const { lang } = useLang();
   return (
     <div className="space-y-5">
       {/* Summary */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-500 mb-0.5">Service fee</p>
-          <p className="text-2xl font-bold" style={{ color: "#344EAD" }}>{formatLak(amount)}</p>
+          <p className="text-xs text-gray-500 mb-0.5">{t("serviceFee")}</p>
+          <p className="text-2xl font-bold" style={{ color: "#344EAD" }}>{formatLak(amount, lang)}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-500 mb-0.5">Service</p>
+          <p className="text-xs text-gray-500 mb-0.5">{t("service")}</p>
           <p className="text-sm font-semibold text-gray-700">{serviceName}</p>
         </div>
       </div>
@@ -127,9 +130,9 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
       {/* Method toggle — QR / Bank / Card */}
       <div className="p-1 bg-gray-200 rounded-2xl grid grid-cols-3 gap-1">
         {([
-          { id: "qr", label: "QR Code", Icon: Scan },
-          { id: "bank", label: "Bank", Icon: Landmark },
-          { id: "cc", label: "Card", Icon: CreditCard },
+          { id: "qr", label: t("methodQr"), Icon: Scan },
+          { id: "bank", label: t("methodBank"), Icon: Landmark },
+          { id: "cc", label: t("methodCard"), Icon: CreditCard },
         ] as const).map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -164,12 +167,12 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
             ))}
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-gray-700">Scan with BCEL One</p>
-            <p className="text-xs text-gray-400 mt-1">or any Lao e-payment app</p>
+            <p className="text-sm font-semibold text-gray-700">{t("qrScanTitle")}</p>
+            <p className="text-xs text-gray-400 mt-1">{t("qrScanSub")}</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Lock className="w-3 h-3" />
-            Secured by Lao National Payment System
+            {t("qrSecured")}
           </div>
         </div>
       )}
@@ -178,14 +181,14 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
       {value.method === "bank" && (
         <div className="space-y-4">
           <div>
-            <FieldLabel required>Select your bank</FieldLabel>
+            <FieldLabel required>{t("selectBank")}</FieldLabel>
             <div className="relative">
               <select
                 value={value.bankName}
                 onChange={(e) => onChange({ bankName: e.target.value })}
                 className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
               >
-                <option value="">Choose a Lao bank...</option>
+                <option value="">{t("chooseBank")}</option>
                 {LAO_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
               <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
@@ -197,13 +200,13 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
           </div>
           {value.bankName && (
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Transfer details</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t("transferDetails")}</p>
               {[
-                { label: "Pay to", value: "Lao Citizen Center" },
-                { label: "Bank", value: value.bankName },
-                { label: "Account No.", value: "010-12-00-8800391-001" },
-                { label: "Amount", value: formatLak(amount) },
-                { label: "Reference", value: reference ?? "—" },
+                { label: t("payTo"), value: "Lao Citizen Center" },
+                { label: t("bank"), value: value.bankName },
+                { label: t("accountNo"), value: "010-12-00-8800391-001" },
+                { label: t("amount"), value: formatLak(amount, lang) },
+                { label: t("reference"), value: reference ?? "—" },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between gap-3">
                   <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -214,7 +217,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
           )}
           <div className="flex items-start gap-2 text-xs text-gray-400">
             <Lock className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            Use the reference number when transferring so we can match your payment.
+            {t("bankNote")}
           </div>
         </div>
       )}
@@ -228,19 +231,19 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
           >
             <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white opacity-[0.07]" />
             <div className="absolute top-8 -right-4 w-20 h-20 rounded-full bg-white opacity-[0.07]" />
-            <p className="text-white/50 text-[11px] mb-5 font-medium tracking-widest uppercase">Debit / Credit</p>
+            <p className="text-white/50 text-[11px] mb-5 font-medium tracking-widest uppercase">{t("cardType")}</p>
             <p className="text-white font-mono text-lg tracking-widest">
               {value.cardNumber || "•••• •••• •••• ••••"}
             </p>
             <div className="flex justify-between mt-4">
               <div>
-                <p className="text-white/50 text-[10px] uppercase tracking-wider">Cardholder</p>
+                <p className="text-white/50 text-[10px] uppercase tracking-wider">{t("cardholder")}</p>
                 <p className="text-white text-sm mt-0.5 font-medium tracking-wide">
-                  {value.cardName || "YOUR NAME"}
+                  {value.cardName || t("yourName")}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-white/50 text-[10px] uppercase tracking-wider">Expires</p>
+                <p className="text-white/50 text-[10px] uppercase tracking-wider">{t("expires")}</p>
                 <p className="text-white text-sm mt-0.5 font-medium">
                   {value.cardExpiry || "MM/YY"}
                 </p>
@@ -249,7 +252,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
           </div>
 
           <div>
-            <FieldLabel required>Card Number</FieldLabel>
+            <FieldLabel required>{t("cardNumber")}</FieldLabel>
             <input
               type="text"
               inputMode="numeric"
@@ -260,18 +263,18 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
             />
           </div>
           <div>
-            <FieldLabel required>Cardholder Name</FieldLabel>
+            <FieldLabel required>{t("cardholderName")}</FieldLabel>
             <input
               type="text"
               value={value.cardName}
               onChange={(e) => onChange({ cardName: e.target.value.toUpperCase() })}
-              placeholder="As printed on card"
+              placeholder={t("cardNamePlaceholder")}
               className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <FieldLabel required>Expiry Date</FieldLabel>
+              <FieldLabel required>{t("expiryDate")}</FieldLabel>
               <input
                 type="text"
                 inputMode="numeric"
@@ -283,7 +286,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
               />
             </div>
             <div>
-              <FieldLabel required>CVV</FieldLabel>
+              <FieldLabel required>{t("cvv")}</FieldLabel>
               <input
                 type="password"
                 inputMode="numeric"
@@ -297,7 +300,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Lock className="w-3 h-3 flex-shrink-0" />
-            Payments are encrypted end-to-end
+            {t("cardEncrypted")}
           </div>
         </div>
       )}

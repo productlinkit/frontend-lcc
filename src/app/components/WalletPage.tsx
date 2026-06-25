@@ -18,13 +18,17 @@ import {
   CalendarClock,
   CheckCircle2,
 } from "lucide-react";
+import { useT, useLang } from "../i18n";
+
+type WalletKey = Parameters<ReturnType<typeof useT<"wallet">>>[0];
 
 interface Bill {
   id: string;
-  name: string;
-  desc: string;
+  nameKey: WalletKey;
+  descKey: WalletKey;
   amount: number;
-  due: string;
+  dueKey: "dueInDays" | "overdueDays";
+  dueDays: number;
   status: "overdue" | "due-soon" | "upcoming";
   icon: React.ElementType;
   color: string;
@@ -33,17 +37,17 @@ interface Bill {
 
 interface Transaction {
   id: string;
-  name: string;
-  desc: string;
+  nameKey: WalletKey;
+  descKey: WalletKey;
   amount: number;
-  date: string;
+  dateKey: WalletKey;
   type: "out" | "in";
   icon: React.ElementType;
 }
 
 interface QuickAction {
   id: string;
-  label: string;
+  labelKey: WalletKey;
   icon: React.ElementType;
   color: string;
   bg: string;
@@ -52,10 +56,11 @@ interface QuickAction {
 const BILLS: Bill[] = [
   {
     id: "elec",
-    name: "Electricity Bill",
-    desc: "EDL — April 2026",
+    nameKey: "billElecName",
+    descKey: "billElecDesc",
     amount: 285000,
-    due: "Due in 3 days",
+    dueKey: "dueInDays",
+    dueDays: 3,
     status: "due-soon",
     icon: Zap,
     color: "#F59E0B",
@@ -63,10 +68,11 @@ const BILLS: Bill[] = [
   },
   {
     id: "water",
-    name: "Water Bill",
-    desc: "Nampapa Lao — April",
+    nameKey: "billWaterName",
+    descKey: "billWaterDesc",
     amount: 92000,
-    due: "Overdue 2 days",
+    dueKey: "overdueDays",
+    dueDays: 2,
     status: "overdue",
     icon: Droplet,
     color: "#DC2626",
@@ -74,10 +80,11 @@ const BILLS: Bill[] = [
   },
   {
     id: "internet",
-    name: "Internet",
-    desc: "Lao Telecom Fiber",
+    nameKey: "billInternetName",
+    descKey: "billInternetDesc",
     amount: 220000,
-    due: "Due in 9 days",
+    dueKey: "dueInDays",
+    dueDays: 9,
     status: "upcoming",
     icon: Wifi,
     color: "#0EA5E9",
@@ -85,10 +92,11 @@ const BILLS: Bill[] = [
   },
   {
     id: "fine",
-    name: "Traffic Fine",
-    desc: "Reference TF-22841",
+    nameKey: "billFineName",
+    descKey: "billFineDesc",
     amount: 150000,
-    due: "Due in 5 days",
+    dueKey: "dueInDays",
+    dueDays: 5,
     status: "due-soon",
     icon: AlertOctagon,
     color: "#EA580C",
@@ -99,65 +107,65 @@ const BILLS: Bill[] = [
 const TRANSACTIONS: Transaction[] = [
   {
     id: "t1",
-    name: "Tax Payment",
-    desc: "Personal income tax",
+    nameKey: "txTaxName",
+    descKey: "txTaxDesc",
     amount: -480000,
-    date: "Today, 09:24",
+    dateKey: "dateToday",
     type: "out",
     icon: Receipt,
   },
   {
     id: "t2",
-    name: "Top up",
-    desc: "From BCEL Bank",
+    nameKey: "txTopupName",
+    descKey: "txTopupDesc",
     amount: 1000000,
-    date: "Yesterday",
+    dateKey: "dateYesterday",
     type: "in",
     icon: ArrowDownLeft,
   },
   {
     id: "t3",
-    name: "Driver's License Fee",
-    desc: "Renewal payment",
+    nameKey: "txLicenseName",
+    descKey: "txLicenseDesc",
     amount: -60000,
-    date: "06 Jun 2026",
+    dateKey: "date06Jun",
     type: "out",
     icon: CreditCard,
   },
   {
     id: "t4",
-    name: "Electricity Bill",
-    desc: "EDL — March",
+    nameKey: "txElecName",
+    descKey: "txElecDesc",
     amount: -270000,
-    date: "02 Jun 2026",
+    dateKey: "date02Jun",
     type: "out",
     icon: Zap,
   },
   {
     id: "t5",
-    name: "Refund",
-    desc: "Cancelled appointment",
+    nameKey: "txRefundName",
+    descKey: "txRefundDesc",
     amount: 25000,
-    date: "30 May 2026",
+    dateKey: "date30May",
     type: "in",
     icon: ArrowDownLeft,
   },
 ];
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { id: "topup", label: "Top up", icon: Plus, color: "#16A34A", bg: "#DCFCE7" },
-  { id: "transfer", label: "Transfer", icon: Send, color: "#344EAD", bg: "#EEF2FF" },
-  { id: "scan", label: "Scan & Pay", icon: QrCode, color: "#7C3AED", bg: "#EDE9FE" },
-  { id: "mobile", label: "Mobile Top-up", icon: Smartphone, color: "#0EA5E9", bg: "#E0F2FE" },
-  { id: "electricity", label: "Electricity", icon: Zap, color: "#F59E0B", bg: "#FEF3C7" },
-  { id: "water", label: "Water", icon: Droplet, color: "#0891B2", bg: "#CFFAFE" },
-  { id: "internet", label: "Internet", icon: Wifi, color: "#DB2777", bg: "#FCE7F3" },
-  { id: "fines", label: "Fines", icon: AlertOctagon, color: "#DC2626", bg: "#FEE2E2" },
+  { id: "topup", labelKey: "qaTopup", icon: Plus, color: "#16A34A", bg: "#DCFCE7" },
+  { id: "transfer", labelKey: "qaTransfer", icon: Send, color: "#344EAD", bg: "#EEF2FF" },
+  { id: "scan", labelKey: "qaScan", icon: QrCode, color: "#7C3AED", bg: "#EDE9FE" },
+  { id: "mobile", labelKey: "qaMobile", icon: Smartphone, color: "#0EA5E9", bg: "#E0F2FE" },
+  { id: "electricity", labelKey: "qaElectricity", icon: Zap, color: "#F59E0B", bg: "#FEF3C7" },
+  { id: "water", labelKey: "qaWater", icon: Droplet, color: "#0891B2", bg: "#CFFAFE" },
+  { id: "internet", labelKey: "qaInternet", icon: Wifi, color: "#DB2777", bg: "#FCE7F3" },
+  { id: "fines", labelKey: "qaFines", icon: AlertOctagon, color: "#DC2626", bg: "#FEE2E2" },
 ];
 
-function formatKip(amount: number) {
+function formatKip(amount: number, lang: "en" | "lo") {
   const abs = Math.abs(amount);
-  return `${amount < 0 ? "-" : ""}${abs.toLocaleString("en-US")} ₭`;
+  return `${amount < 0 ? "-" : ""}${abs.toLocaleString(lang === "lo" ? "lo-LA" : "en-US")} ₭`;
 }
 
 interface WalletPageProps {
@@ -166,6 +174,8 @@ interface WalletPageProps {
 }
 
 export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) {
+  const t = useT("wallet");
+  const { lang } = useLang();
   const [showBalance, setShowBalance] = useState(true);
 
   // Before login: empty wallet. After login: demo data appears.
@@ -190,16 +200,16 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
         }}
       >
         <div className="max-w-screen-xl mx-auto">
-          <h1 className="text-white">My Wallet</h1>
+          <h1 className="text-white">{t("title")}</h1>
           <p className="text-white/70 text-sm mt-1">
-            Manage your bills, payments, and balance
+            {t("subtitle")}
           </p>
 
           {/* Balance card */}
           <div className="mt-5 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <p className="text-white/70 text-xs uppercase tracking-wider">
-                Available balance
+                {t("availableBalance")}
               </p>
               <button
                 onClick={() => setShowBalance((s) => !s)}
@@ -213,7 +223,7 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
               </button>
             </div>
             <p className="text-white mt-2" style={{ fontSize: "28px", fontWeight: 600 }}>
-              {showBalance ? formatKip(balance) : "•••••• ₭"}
+              {showBalance ? formatKip(balance, lang) : "•••••• ₭"}
             </p>
             <div className="flex gap-2 mt-4">
               <button
@@ -222,14 +232,14 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                 style={{ color: "#344EAD" }}
               >
                 <Plus className="w-4 h-4" />
-                Top up
+                {t("topUp")}
               </button>
               <button
                 onClick={act}
                 className="flex-1 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors"
               >
                 <Send className="w-4 h-4" />
-                Transfer
+                {t("transfer")}
               </button>
             </div>
           </div>
@@ -242,13 +252,13 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
         {/* Quick Payment */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-800">Quick payment</h2>
+            <h2 className="text-gray-800">{t("quickPayment")}</h2>
             <button
               onClick={act}
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
-              See all <ChevronRight className="w-3.5 h-3.5" />
+              {t("seeAll")} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
           <div className="grid grid-cols-4 lg:grid-cols-8 gap-3">
@@ -267,7 +277,7 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                     <Icon className="w-5 h-5" style={{ color: a.color }} />
                   </div>
                   <span className="text-xs text-gray-600 text-center leading-tight">
-                    {a.label}
+                    {t(a.labelKey)}
                   </span>
                 </button>
               );
@@ -279,11 +289,14 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-gray-800">Bills due</h2>
+              <h2 className="text-gray-800">{t("billsDue")}</h2>
               <p className="text-gray-500 text-xs mt-0.5">
                 {bills.length > 0
-                  ? `Total ${formatKip(totalDue)} across ${bills.length} bills`
-                  : "No bills due"}
+                  ? t("billsSummary", {
+                      total: formatKip(totalDue, lang),
+                      count: bills.length,
+                    })
+                  : t("noBillsDue")}
               </p>
             </div>
             <button
@@ -291,7 +304,7 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
-              View all <ChevronRight className="w-3.5 h-3.5" />
+              {t("viewAll")} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -300,19 +313,20 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
               <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                 <Receipt className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-sm">No bills due</p>
-              <p className="text-gray-400 text-xs mt-1">Sign in to see your bills</p>
+              <p className="text-gray-500 text-sm">{t("noBillsDue")}</p>
+              <p className="text-gray-400 text-xs mt-1">{t("signInBills")}</p>
             </div>
           ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {bills.map((b) => {
               const Icon = b.icon;
+              const dueLabel = t(b.dueKey, { n: b.dueDays });
               const statusStyle =
                 b.status === "overdue"
-                  ? { color: "#DC2626", bg: "#FEE2E2", label: b.due }
+                  ? { color: "#DC2626", bg: "#FEE2E2", label: dueLabel }
                   : b.status === "due-soon"
-                  ? { color: "#D97706", bg: "#FEF3C7", label: b.due }
-                  : { color: "#6B7280", bg: "#F3F4F6", label: b.due };
+                  ? { color: "#D97706", bg: "#FEF3C7", label: dueLabel }
+                  : { color: "#6B7280", bg: "#F3F4F6", label: dueLabel };
 
               return (
                 <div
@@ -327,10 +341,10 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 leading-snug">
-                      {b.name}
+                      {t(b.nameKey)}
                     </p>
                     <p className="text-xs text-gray-400 leading-relaxed truncate">
-                      {b.desc}
+                      {t(b.descKey)}
                     </p>
                     <span
                       className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mt-1"
@@ -345,14 +359,14 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <p className="text-sm font-semibold text-gray-800">
-                      {formatKip(b.amount)}
+                      {formatKip(b.amount, lang)}
                     </p>
                     <button
                       onClick={act}
                       className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
                       style={{ backgroundColor: "#344EAD" }}
                     >
-                      Pay
+                      {t("pay")}
                     </button>
                   </div>
                 </div>
@@ -365,13 +379,13 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
         {/* Recent Transactions */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-800">Recent transactions</h2>
+            <h2 className="text-gray-800">{t("recentTransactions")}</h2>
             <button
               onClick={act}
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
-              History <ChevronRight className="w-3.5 h-3.5" />
+              {t("history")} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -380,17 +394,17 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
               <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                 <ArrowUpRight className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-sm">No recent transactions</p>
-              <p className="text-gray-400 text-xs mt-1">Sign in to see your activity</p>
+              <p className="text-gray-500 text-sm">{t("noRecentTransactions")}</p>
+              <p className="text-gray-400 text-xs mt-1">{t("signInActivity")}</p>
             </div>
           ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100">
-            {transactions.map((t) => {
-              const Icon = t.icon;
-              const isIn = t.type === "in";
+            {transactions.map((tx) => {
+              const Icon = tx.icon;
+              const isIn = tx.type === "in";
               return (
                 <div
-                  key={t.id}
+                  key={tx.id}
                   className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
                 >
                   <div
@@ -407,9 +421,9 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 leading-snug truncate">
-                      {t.name}
+                      {t(tx.nameKey)}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">{t.desc}</p>
+                    <p className="text-xs text-gray-400 truncate">{t(tx.descKey)}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p
@@ -417,11 +431,11 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                       style={{ color: isIn ? "#16A34A" : "#1F2937" }}
                     >
                       {isIn ? "+" : ""}
-                      {formatKip(t.amount)}
+                      {formatKip(tx.amount, lang)}
                     </p>
                     <p className="text-[10px] text-gray-400 mt-0.5 flex items-center justify-end gap-1">
                       <CheckCircle2 className="w-3 h-3" style={{ color: "#16A34A" }} />
-                      {t.date}
+                      {t(tx.dateKey)}
                     </p>
                   </div>
                 </div>

@@ -7,34 +7,15 @@ import {
   Bell,
   LayoutGrid,
 } from "lucide-react";
-import type { Lang } from "../App";
 import logoLcc from "../../imports/logo-lcc.png";
 import { CustomerServiceChat } from "./CustomerServiceChat";
+import { useLang, useT } from "../i18n";
 
 interface LayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  lang: Lang;
-  onLangChange: (lang: Lang) => void;
   children: React.ReactNode;
 }
-
-const NAV_LABELS: Record<Lang, Record<string, string>> = {
-  en: {
-    home: "Home",
-    service: "Service",
-    history: "History",
-    wallet: "Wallet",
-    account: "Account",
-  },
-  lo: {
-    home: "ໜ້າຫຼັກ",
-    service: "ບໍລິການ",
-    history: "ປະຫວັດ",
-    wallet: "ກະເປົາເງິນ",
-    account: "ບັນຊີ",
-  },
-};
 
 const NAV_ITEMS = [
   { id: "home", icon: Home },
@@ -96,10 +77,12 @@ const MAIN_TABS = new Set([
   "account",
 ]);
 
-export function Layout({ activeTab, onTabChange, lang, onLangChange, children }: LayoutProps) {
+export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
+  const { lang, toggle } = useLang();
+  const t = useT("layout");
   const isSubPage = !MAIN_TABS.has(activeTab);
 
-  const toggleLang = () => onLangChange(lang === "en" ? "lo" : "en");
+  const toggleLang = toggle;
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#F0F2F8] overflow-hidden">
@@ -123,10 +106,10 @@ export function Layout({ activeTab, onTabChange, lang, onLangChange, children }:
             />
             <div className="hidden sm:block text-left">
               <p className="text-white text-sm font-semibold leading-tight tracking-wide">
-                LAO CITIZEN CENTER
+                {t("brand")}
               </p>
               <p className="text-white/60 text-xs leading-tight">
-                ສູນພົນລະເມືອງລາວ
+                {t("brandSub")}
               </p>
             </div>
           </button>
@@ -147,7 +130,7 @@ export function Layout({ activeTab, onTabChange, lang, onLangChange, children }:
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  {NAV_LABELS[lang][item.id]}
+                  {t(item.id as "home")}
                 </button>
               );
             })}
@@ -159,7 +142,7 @@ export function Layout({ activeTab, onTabChange, lang, onLangChange, children }:
             <button
               onClick={toggleLang}
               className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 transition-all duration-200"
-              title={lang === "en" ? "Switch to Lao" : "Switch to English"}
+              title={lang === "en" ? t("switchToLao") : t("switchToEnglish")}
             >
               <span
                 className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-white/40 flex-shrink-0"
@@ -216,7 +199,7 @@ export function Layout({ activeTab, onTabChange, lang, onLangChange, children }:
                       : { color: "#9CA3AF" }
                   }
                 >
-                  {NAV_LABELS[lang][item.id]}
+                  {t(item.id as "home")}
                 </span>
               </button>
             );

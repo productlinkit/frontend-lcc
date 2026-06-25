@@ -6,6 +6,7 @@ import {
   villagesOf,
   type Loc,
 } from "../data/laoDivisions";
+import { useT } from "../i18n";
 
 /*
  * Shared form fields used across the Civil Registration forms:
@@ -59,6 +60,7 @@ export function SearchableSelect({
   disabled?: boolean;
   loading?: boolean;
 }) {
+  const t = useT("fields");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -109,7 +111,7 @@ export function SearchableSelect({
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search..."
+                  placeholder={t("search")}
                   className="flex-1 bg-transparent outline-none text-sm text-gray-800 placeholder:text-gray-400"
                 />
               </div>
@@ -117,10 +119,10 @@ export function SearchableSelect({
             <div className="max-h-60 overflow-y-auto py-1">
               {loading ? (
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t("loading")}
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="py-6 text-center text-sm text-gray-400">No results</div>
+                <div className="py-6 text-center text-sm text-gray-400">{t("noResults")}</div>
               ) : (
                 filtered.map((o) => {
                   const active = o.value === value;
@@ -145,7 +147,7 @@ export function SearchableSelect({
                 })
               )}
               {!loading && filtered.length === 100 && (
-                <div className="px-4 py-2 text-[11px] text-gray-400">Refine your search to see more…</div>
+                <div className="px-4 py-2 text-[11px] text-gray-400">{t("refineSearch")}</div>
               )}
             </div>
           </div>
@@ -157,7 +159,7 @@ export function SearchableSelect({
 
 /* ─── Cascading Province → District → Village (real Lao data) ─── */
 export function LocationFields({
-  province, district, village, onChange, villageLabel = "Village", required,
+  province, district, village, onChange, villageLabel, required,
 }: {
   province: string;
   district: string;
@@ -166,6 +168,8 @@ export function LocationFields({
   villageLabel?: string;
   required?: boolean;
 }) {
+  const t = useT("fields");
+  const resolvedVillageLabel = villageLabel ?? t("village");
   const [villageOpts, setVillageOpts] = useState<Loc[]>([]);
   const [loadingVillages, setLoadingVillages] = useState(false);
 
@@ -189,28 +193,28 @@ export function LocationFields({
   return (
     <>
       <SearchableSelect
-        label="Province / Capital"
+        label={t("province")}
         value={province}
         options={provinceOptions}
-        placeholder="Select province..."
+        placeholder={t("selectProvince")}
         required={required}
         onChange={(v) => onChange({ province: v, district: "", village: "" })}
       />
       <div className="grid grid-cols-2 gap-3">
         <SearchableSelect
-          label="District"
+          label={t("district")}
           value={district}
           options={districtOptions}
-          placeholder={province ? "Select district..." : "Select province first"}
+          placeholder={province ? t("selectDistrict") : t("selectProvinceFirst")}
           required={required}
           disabled={!province}
           onChange={(v) => onChange({ district: v, village: "" })}
         />
         <SearchableSelect
-          label={villageLabel}
+          label={resolvedVillageLabel}
           value={village}
           options={villageOptions}
-          placeholder={district ? "Select village..." : "Select district first"}
+          placeholder={district ? t("selectVillage") : t("selectDistrictFirst")}
           required={required}
           disabled={!district}
           loading={loadingVillages}

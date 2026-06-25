@@ -14,74 +14,7 @@ import { HeroSlider } from "./HeroSlider";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak } from "../serviceConfig";
-import type { Lang } from "../App";
-
-const T = {
-  en: {
-    greeting: "Good morning",
-    searchPlaceholder: "Search services, certificates...",
-    search: "Search",
-    actionRequiredTitle: "Action required — Residence Certificate",
-    actionRequiredDesc:
-      "Your recent application was rejected. Please re-upload your identity document with higher resolution.",
-    updateDocument: "Update document",
-    dismissTitle: "Dismiss notification?",
-    dismissDesc:
-      "Are you sure you want to dismiss this alert? Your application still requires attention and may be cancelled if not resolved.",
-    keepIt: "Keep it",
-    yesDismiss: "Yes, dismiss",
-    whatDoYouNeed: "What do you need?",
-    customize: "Customize",
-    howItWorks: "How it works",
-    more: "More",
-    browseAll: "Browse all services",
-    noServicesFound: "No services found",
-    latestUpdates: "Latest updates",
-    customizeTitle: "Customize home menu",
-    customizeDesc: "Pick up to 7 services to show on your home screen.",
-    reset: "Reset",
-    save: "Save changes",
-    processingTime: "Processing time",
-    processingTimeValue: "3–5 business days",
-    requiredDocs: "Required documents",
-    requiredDocsValue: "National ID, Household registration book",
-    serviceFee: "Service fee",
-    serviceFeeValue: "20,000 LAK",
-    applyNow: "Apply Now",
-  },
-  lo: {
-    greeting: "ສະບາຍດີຕອນເຊົ້າ",
-    searchPlaceholder: "ຄົ້ນຫາການບໍລິການ, ໃບຢັ້ງຢືນ...",
-    search: "ຄົ້ນຫາ",
-    actionRequiredTitle: "ຕ້ອງດຳເນີນການ — ໃບຢັ້ງຢືນທີ່ຢູ່",
-    actionRequiredDesc:
-      "ການສະໝັກຫຼ້າສຸດຂອງທ່ານຖືກປະຕິເສດ. ກະລຸນາອັບໂຫຼດເອກະສານຢືນຢັນຕົວຕົນຄືນດ້ວຍຄວາມລະອຽດສູງກວ່າ.",
-    updateDocument: "ອັບເດດເອກະສານ",
-    dismissTitle: "ປິດການແຈ້ງເຕືອນ?",
-    dismissDesc:
-      "ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການປິດການແຈ້ງເຕືອນນີ້? ການສະໝັກຂອງທ່ານຍັງຕ້ອງການຄວາມສົນໃຈ ແລະ ອາດຈະຖືກຍົກເລີກຖ້າບໍ່ໄດ້ແກ້ໄຂ.",
-    keepIt: "ເກັບໄວ້",
-    yesDismiss: "ແມ່ນ, ປິດ",
-    whatDoYouNeed: "ທ່ານຕ້ອງການຫຍັງ?",
-    customize: "ປັບແຕ່ງ",
-    howItWorks: "ວິທີໃຊ້ງານ",
-    more: "ເພີ່ມເຕີມ",
-    browseAll: "ເບິ່ງການບໍລິການທັງໝົດ",
-    noServicesFound: "ບໍ່ພົບການບໍລິການ",
-    latestUpdates: "ຂ່າວສານຫຼ້າສຸດ",
-    customizeTitle: "ປັບແຕ່ງເມນູໜ້າຫຼັກ",
-    customizeDesc: "ເລືອກສູງສຸດ 7 ການບໍລິການເພື່ອສະແດງໃນໜ້າຫຼັກ.",
-    reset: "ຣີເຊັດ",
-    save: "ບັນທຶກ",
-    processingTime: "ໄລຍະເວລາດຳເນີນການ",
-    processingTimeValue: "3–5 ວັນລັດຖະການ",
-    requiredDocs: "ເອກະສານທີ່ຕ້ອງການ",
-    requiredDocsValue: "ບັດປະຈຳຕົວ, ປຶ້ມສຳມະໂນຄົວ",
-    serviceFee: "ຄ່າທຳນຽມ",
-    serviceFeeValue: "20,000 ກີບ",
-    applyNow: "ສະໝັກດຽວນີ້",
-  },
-} as const;
+import { useT, useLang } from "../i18n";
 
 // Civil Registration — Phase 1 services (per PRD), shown as the default Quick Actions
 const DEFAULT_HOME_SERVICES = [
@@ -140,11 +73,12 @@ const NEWS = {
 
 interface HomePageProps {
   onTabChange: (tab: string) => void;
-  lang: Lang;
+  isAuthenticated?: boolean;
 }
 
-export function HomePage({ onTabChange, lang }: HomePageProps) {
-  const t = T[lang];
+export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
+  const t = useT("home");
+  const { lang } = useLang();
   const [searchQuery, setSearchQuery] = useState("");
   const [showBanner, setShowBanner] = useState(true);
   const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -201,20 +135,26 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
 
   const displayedServices = searchQuery.trim()
     ? SERVICES.filter((s) =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase())
+        (lang === "lo" ? s.nameLo : s.name)
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
       ).slice(0, 7)
     : homeServices;
 
   return (
     <div className="min-h-full">
       {/* Hero Slider */}
-      <HeroSlider greeting={t.greeting} name={lang === "lo" ? "ສົມໄຊ" : "Somchai"} lang={lang}>
+      <HeroSlider
+        greeting={t("greeting")}
+        name={isAuthenticated ? (lang === "lo" ? "ສົມໄຊ" : "Somchai") : ""}
+        lang={lang}
+      >
         <div className="flex gap-2">
           <div className="flex-1 flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-md">
             <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder={t.searchPlaceholder}
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder:text-gray-400"
@@ -224,7 +164,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
             className="px-5 py-3 rounded-xl text-white text-sm shadow-md flex-shrink-0 font-medium hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#F59E0B" }}
           >
-            {t.search}
+            {t("search")}
           </button>
         </div>
       </HeroSlider>
@@ -240,16 +180,16 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-amber-800 text-sm font-semibold leading-snug">
-                {t.actionRequiredTitle}
+                {t("actionRequiredTitle")}
               </p>
               <p className="text-amber-700 text-xs mt-1 leading-relaxed">
-                {t.actionRequiredDesc}
+                {t("actionRequiredDesc")}
               </p>
               <button
                 className="mt-2 text-xs font-semibold flex items-center gap-1"
                 style={{ color: "#D97706" }}
               >
-                {t.updateDocument} <ChevronRight className="w-3 h-3" />
+                {t("updateDocument")} <ChevronRight className="w-3 h-3" />
               </button>
             </div>
             <button
@@ -264,7 +204,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
         {/* Services Section */}
         <div>
           <div className="flex items-center justify-between mb-4 gap-2">
-            <h2 className="text-gray-800">{t.whatDoYouNeed}</h2>
+            <h2 className="text-gray-800">{t("whatDoYouNeed")}</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={openCustomize}
@@ -272,7 +212,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 style={{ color: "#344EAD", borderColor: "#C7D2FE", backgroundColor: "white" }}
               >
                 <Settings2 className="w-3.5 h-3.5" />
-                {t.customize}
+                {t("customize")}
               </button>
               <button
                 onClick={() => setShowTutorial(true)}
@@ -280,7 +220,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 style={{ color: "#344EAD", borderColor: "#C7D2FE", backgroundColor: "#EEF2FF" }}
               >
                 <HelpCircle className="w-3.5 h-3.5" />
-                {t.howItWorks}
+                {t("howItWorks")}
               </button>
             </div>
           </div>
@@ -320,7 +260,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                     className="text-sm font-medium leading-snug transition-all duration-200"
                     style={{ color: isHovered ? "white" : "#1F2937" }}
                   >
-                    {service.name}
+                    {lang === "lo" ? service.nameLo : service.name}
                   </p>
                   <p
                     className="text-xs mt-0.5 transition-all duration-200"
@@ -328,7 +268,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                       color: isHovered ? "rgba(255,255,255,0.65)" : "#9CA3AF",
                     }}
                   >
-                    {service.desc}
+                    {lang === "lo" ? service.descLo : service.desc}
                   </p>
                 </button>
               );
@@ -370,7 +310,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                     color: hoveredService === "__more__" ? "white" : "#1F2937",
                   }}
                 >
-                  {t.more}
+                  {t("more")}
                 </p>
                 <p
                   className="text-xs mt-0.5"
@@ -381,7 +321,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                         : "#9CA3AF",
                   }}
                 >
-                  {t.browseAll}
+                  {t("browseAll")}
                 </p>
               </button>
             )}
@@ -389,7 +329,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
 
           {searchQuery.trim() && displayedServices.length === 0 && (
             <div className="text-center py-10">
-              <p className="text-gray-400 text-sm">{t.noServicesFound}</p>
+              <p className="text-gray-400 text-sm">{t("noServicesFound")}</p>
             </div>
           )}
         </div>
@@ -397,7 +337,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
         {/* Latest Updates */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-800">{t.latestUpdates}</h2>
+            <h2 className="text-gray-800">{t("latestUpdates")}</h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -448,9 +388,9 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 <AlertCircle className="w-7 h-7 text-red-500" />
               </div>
               <div>
-                <h3 className="text-gray-800 mb-1">{t.dismissTitle}</h3>
+                <h3 className="text-gray-800 mb-1">{t("dismissTitle")}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
-                  {t.dismissDesc}
+                  {t("dismissDesc")}
                 </p>
               </div>
             </div>
@@ -459,7 +399,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 onClick={() => setShowDismissConfirm(false)}
                 className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                {t.keepIt}
+                {t("keepIt")}
               </button>
               <button
                 onClick={() => {
@@ -469,7 +409,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 className="flex-1 py-3 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "#DC2626" }}
               >
-                {t.yesDismiss}
+                {t("yesDismiss")}
               </button>
             </div>
           </div>
@@ -501,8 +441,12 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                   );
                 })()}
                 <div>
-                  <h3 className="text-gray-800">{selectedService.name}</h3>
-                  <p className="text-gray-400 text-sm">{selectedService.desc}</p>
+                  <h3 className="text-gray-800">
+                    {lang === "lo" ? selectedService.nameLo : selectedService.name}
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    {lang === "lo" ? selectedService.descLo : selectedService.desc}
+                  </p>
                 </div>
               </div>
               <button
@@ -518,27 +462,27 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
               return (
                 <div className="space-y-3 mb-6">
                   <div className="p-4 rounded-xl bg-gray-50">
-                    <p className="text-xs text-gray-500 mb-1">{t.processingTime}</p>
-                    <p className="text-sm text-gray-700">{cfg.processingTime}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("processingTime")}</p>
+                    <p className="text-sm text-gray-700">{cfg.processingTime[lang]}</p>
                   </div>
                   <div className="p-4 rounded-xl bg-gray-50">
-                    <p className="text-xs text-gray-500 mb-1.5">{t.requiredDocs}</p>
+                    <p className="text-xs text-gray-500 mb-1.5">{t("requiredDocs")}</p>
                     <ul className="space-y-1">
                       {cfg.requiredDocs.map((doc) => (
-                        <li key={doc} className="text-sm text-gray-700 flex items-start gap-2">
+                        <li key={doc[lang]} className="text-sm text-gray-700 flex items-start gap-2">
                           <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
-                          {doc}
+                          {doc[lang]}
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div className="p-4 rounded-xl bg-gray-50 flex items-center justify-between">
-                    <p className="text-xs text-gray-500">{t.serviceFee}</p>
+                    <p className="text-xs text-gray-500">{t("serviceFee")}</p>
                     <p
                       className="text-sm font-semibold"
                       style={{ color: cfg.fee === 0 ? "#16A34A" : "#344EAD" }}
                     >
-                      {formatLak(cfg.fee)}
+                      {formatLak(cfg.fee, lang)}
                     </p>
                   </div>
                 </div>
@@ -554,7 +498,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 if (tab) onTabChange(tab);
               }}
             >
-              {t.applyNow}
+              {t("applyNow")}
             </button>
           </div>
         </div>
@@ -574,9 +518,9 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
             <div className="p-6 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-gray-800">{t.customizeTitle}</h3>
+                  <h3 className="text-gray-800">{t("customizeTitle")}</h3>
                   <p className="text-gray-500 text-xs mt-1">
-                    {t.customizeDesc}
+                    {t("customizeDesc")}
                   </p>
                 </div>
                 <button
@@ -613,7 +557,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 return (
                   <div key={cat.id}>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
-                      {cat.label}
+                      {lang === "lo" ? cat.labelLo : cat.label}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {items.map((s) => {
@@ -648,10 +592,10 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-800 leading-snug truncate">
-                                {s.name}
+                                {lang === "lo" ? s.nameLo : s.name}
                               </p>
                               <p className="text-xs text-gray-400 truncate">
-                                {s.desc}
+                                {lang === "lo" ? s.descLo : s.desc}
                               </p>
                             </div>
                             <div
@@ -682,7 +626,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 onClick={() => setDraftIds(DEFAULT_HOME_SERVICES)}
                 className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2"
               >
-                {t.reset}
+                {t("reset")}
               </button>
               <button
                 onClick={saveCustomize}
@@ -690,7 +634,7 @@ export function HomePage({ onTabChange, lang }: HomePageProps) {
                 className="flex-1 py-3 rounded-xl text-white text-sm font-medium shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: "#344EAD" }}
               >
-                {t.save}
+                {t("save")}
               </button>
             </div>
           </div>

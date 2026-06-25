@@ -14,6 +14,7 @@ import {
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
 import { LocationFields, DateField } from "./formFields";
 import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
+import { useT, useLang } from "../i18n";
 
 /* ─── Types ─── */
 interface UploadedFile {
@@ -68,29 +69,25 @@ interface FormData {
 }
 
 /* ─── Constants ─── */
-const STEPS = [
-  { id: 1, label: "Verify Identity", subtitle: "Upload your ID — we'll read your details automatically" },
-  { id: 2, label: "Applicant", subtitle: "Confirm the details read from your ID" },
-  { id: 3, label: "Location & Authority", subtitle: "Jurisdiction and certifying village office" },
-  { id: 4, label: "Current Residence", subtitle: "The address being attested" },
-  { id: 5, label: "Household & Purpose", subtitle: "Family book reference, parentage and purpose" },
-  { id: 6, label: "Payment", subtitle: "Service fee" },
-];
+// Step titles/subtitles resolve via the `resident` namespace (step{n}Title / step{n}Subtitle).
+const STEP_IDS = [1, 2, 3, 4, 5, 6] as const;
+const STEP_COUNT = STEP_IDS.length;
 
-const NATIONALITIES = [
-  "Lao", "Thai", "Vietnamese", "Chinese", "Cambodian",
-  "Myanmar", "American", "French", "Other",
-];
+// Nationality / purpose option keys (label resolved via `t`).
+const NATIONALITY_KEYS = [
+  "natLao", "natThai", "natVietnamese", "natChinese", "natCambodian",
+  "natMyanmar", "natAmerican", "natFrench", "natOther",
+] as const;
 
-const PURPOSES = [
-  "Employment / Job Application",
-  "Bank Account Opening",
-  "School / University Enrollment",
-  "Travel / Visa Application",
-  "Property Transaction",
-  "Government Permit",
-  "Other",
-];
+const PURPOSE_KEYS = [
+  "purposeEmployment",
+  "purposeBank",
+  "purposeSchool",
+  "purposeTravel",
+  "purposeProperty",
+  "purposePermit",
+  "purposeOther",
+] as const;
 
 // Demo details "read" from the uploaded ID
 const DETECTED = { citizenName: "Somchai Vongkhamphanh", age: "34", nationality: "Lao" };
@@ -132,7 +129,7 @@ function InputField({
 function SelectField({
   label, value, options, placeholder, onChange, required,
 }: {
-  label: React.ReactNode; value: string; options: string[];
+  label: React.ReactNode; value: string; options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
   return (
@@ -145,7 +142,7 @@ function SelectField({
           className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
         >
           <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
           <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -164,6 +161,7 @@ function UploadBox({
   file: UploadedFile | null; onChange: (f: UploadedFile | null) => void;
   required?: boolean; height?: string;
 }) {
+  const t = useT("resident");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +206,7 @@ function UploadBox({
             <Camera className="w-7 h-7" style={{ color: "#344EAD" }} />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-gray-600 group-hover:text-[#344EAD] transition-colors">Tap to upload photo</p>
+            <p className="text-sm font-semibold text-gray-600 group-hover:text-[#344EAD] transition-colors">{t("uploadTap")}</p>
             <p className="text-xs text-gray-400 mt-0.5">{sublabel}</p>
           </div>
         </button>
@@ -222,12 +220,12 @@ function StepIndicator({ step }: { step: number }) {
   return (
     <div className="bg-white border-b border-gray-100">
       <div className="max-w-screen-sm mx-auto px-4 py-4 flex items-center">
-        {STEPS.map((s, i) => {
-          const done = step > s.id;
-          const active = step === s.id;
-          const isLast = i === STEPS.length - 1;
+        {STEP_IDS.map((id, i) => {
+          const done = step > id;
+          const active = step === id;
+          const isLast = i === STEP_IDS.length - 1;
           return (
-            <div key={s.id} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
+            <div key={id} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 flex-shrink-0"
                 style={{
@@ -236,14 +234,14 @@ function StepIndicator({ step }: { step: number }) {
                   opacity: done ? 0.55 : 1,
                 }}
               >
-                {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : s.id}
+                {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : id}
               </div>
               {!isLast && (
                 <div
                   className="flex-1 h-0.5 mx-1.5 rounded-full transition-all duration-500"
                   style={{
-                    backgroundColor: step > s.id ? "#344EAD" : "#E5E7EB",
-                    opacity: step > s.id ? 0.4 : 1,
+                    backgroundColor: step > id ? "#344EAD" : "#E5E7EB",
+                    opacity: step > id ? 0.4 : 1,
                   }}
                 />
               )}
@@ -257,14 +255,14 @@ function StepIndicator({ step }: { step: number }) {
 
 /* ─── Section heading inside the form body ─── */
 function StepHeader({ step }: { step: number }) {
-  const meta = STEPS.find((s) => s.id === step)!;
+  const t = useT("resident");
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEP_COUNT })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(`step${step}Title` as "step1Title")}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(`step${step}Subtitle` as "step1Subtitle")}</p>
     </div>
   );
 }
@@ -275,6 +273,8 @@ interface ResidentCertificatePageProps {
 }
 
 export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps) {
+  const t = useT("resident");
+  const { lang } = useLang();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -315,6 +315,34 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   });
 
   const fee = SERVICE_CONFIG.resident.fee ?? 0;
+
+  // Nationality / purpose select options — value stays the canonical EN string
+  // (stored in form state); the visible label is translated.
+  const NATIONALITY_EN = [
+    "Lao", "Thai", "Vietnamese", "Chinese", "Cambodian",
+    "Myanmar", "American", "French", "Other",
+  ];
+  const PURPOSE_EN = [
+    "Employment / Job Application",
+    "Bank Account Opening",
+    "School / University Enrollment",
+    "Travel / Visa Application",
+    "Property Transaction",
+    "Government Permit",
+    "Other",
+  ];
+  const nationalityOptions = NATIONALITY_EN.map((value, i) => ({
+    value,
+    label: t(NATIONALITY_KEYS[i]),
+  }));
+  const purposeOptions = PURPOSE_EN.map((value, i) => ({
+    value,
+    label: t(PURPOSE_KEYS[i]),
+  }));
+  const nationalityLabel = (value: string) => {
+    const i = NATIONALITY_EN.indexOf(value);
+    return i >= 0 ? t(NATIONALITY_KEYS[i]) : value;
+  };
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -361,7 +389,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
     return true;
   };
 
-  const lastStep = STEPS.length;
+  const lastStep = STEP_COUNT;
 
   const goBack = () => {
     if (step > 1) setStep((s) => s - 1);
@@ -388,17 +416,17 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Application Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Your Residence Certificate application has been received and is now being processed.
+              {t("successMessage")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Applicant", value: form.citizenName },
-              { label: "Reference No.", value: refNo },
-              { label: "Est. completion", value: "Same day (target)" },
-              { label: "Status", value: "Processing", isStatus: true },
+              { label: t("successApplicant"), value: form.citizenName },
+              { label: t("successReference"), value: refNo },
+              { label: t("successCompletion"), value: t("successCompletionValue") },
+              { label: t("successStatus"), value: t("successStatusValue"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">{row.label}</span>
@@ -417,9 +445,9 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your application in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -438,8 +466,8 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Residence Certificate</p>
-            <p className="text-xs text-gray-400">Online Application</p>
+            <p className="text-sm font-semibold text-gray-800">{t("headerTitle")}</p>
+            <p className="text-xs text-gray-400">{t("headerSubtitle")}</p>
           </div>
           {/* spacer to balance the back button */}
           <div className="w-9 flex-shrink-0" />
@@ -461,19 +489,19 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Upload clear photos of both sides of your National ID (or passport). We'll read your name and details automatically. Renters and foreigners should also bring a lease contract to the village office.
+                  {t("step1Notice")}
                 </p>
               </div>
 
               <UploadBox
-                label="ID Card — Front Side"
-                sublabel="Photo or scan • JPG, PNG"
+                label={t("frontIdLabel")}
+                sublabel={t("idSublabel")}
                 file={form.frontId}
                 onChange={handleFrontId}
               />
               <UploadBox
-                label="ID Card — Back Side"
-                sublabel="Photo or scan • JPG, PNG"
+                label={t("backIdLabel")}
+                sublabel={t("idSublabel")}
                 file={form.backId}
                 onChange={(f) => set("backId", f)}
               />
@@ -483,7 +511,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                   <ScanLine className="w-5 h-5 animate-pulse flex-shrink-0" style={{ color: "#344EAD" }} />
                   <p className="text-sm font-medium" style={{ color: "#344EAD" }}>
-                    Reading your ID…
+                    {t("readingId")}
                   </p>
                 </div>
               )}
@@ -491,9 +519,13 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 <div className="flex items-start gap-3 p-4 rounded-2xl bg-green-50 border border-green-200">
                   <Sparkles className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-green-700">Details detected</p>
+                    <p className="text-sm font-semibold text-green-700">{t("detailsDetected")}</p>
                     <p className="text-xs text-green-600 mt-0.5">
-                      {form.citizenName} · Age {form.age} · {form.nationality}. Confirm them on the next step.
+                      {t("detectedSummary", {
+                        name: form.citizenName,
+                        age: form.age,
+                        nationality: nationalityLabel(form.nationality),
+                      })}
                     </p>
                   </div>
                 </div>
@@ -507,55 +539,55 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
               {/* Ref No (Auto) */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Ref. No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("refNoLabel")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{refNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
                 </span>
               </div>
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-green-50 border border-green-100">
                 <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
                 <p className="text-xs text-green-700 leading-relaxed">
-                  Auto-filled from your ID — please review and correct if anything is wrong.
+                  {t("autoFilledNotice")}
                 </p>
               </div>
               <InputField
-                label="Citizen's Name"
+                label={t("citizenNameLabel")}
                 value={form.citizenName}
-                placeholder="Full name of the applicant"
+                placeholder={t("citizenNamePlaceholder")}
                 onChange={(v) => set("citizenName", v)}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Age"
+                  label={t("ageLabel")}
                   value={form.age}
-                  placeholder="e.g. 34"
+                  placeholder={t("agePlaceholder")}
                   inputMode="numeric"
                   maxLength={3}
                   onChange={(v) => set("age", v.replace(/\D/g, "").slice(0, 3))}
                   required
                 />
                 <SelectField
-                  label="Nationality"
+                  label={t("nationalityLabel")}
                   value={form.nationality}
-                  options={NATIONALITIES}
-                  placeholder="Select..."
+                  options={nationalityOptions}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => set("nationality", v)}
                   required
                 />
               </div>
               <InputField
-                label="Occupation (optional)"
+                label={t("occupationLabel")}
                 value={form.occupation}
-                placeholder="Current occupation or profession"
+                placeholder={t("occupationPlaceholder")}
                 onChange={(v) => set("occupation", v)}
               />
               <UploadBox
-                label="Picture (3×4) — if applicable"
-                sublabel="3×4 cm photo • JPG, PNG"
+                label={t("pictureLabel")}
+                sublabel={t("pictureSublabel")}
                 file={form.picture}
                 onChange={(f) => set("picture", f)}
                 required={false}
@@ -571,7 +603,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 province={form.province}
                 district={form.district}
                 village={form.villageName}
-                villageLabel="Village's Name"
+                villageLabel={t("villageNameLabel")}
                 required
                 onChange={(p) =>
                   setForm((f) => ({
@@ -583,16 +615,16 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 }
               />
               <InputField
-                label="Village Chief's Name (Nai Ban)"
+                label={t("villageChiefLabel")}
                 value={form.villageChiefName}
-                placeholder="Full name of the certifying Village Chief"
+                placeholder={t("villageChiefPlaceholder")}
                 onChange={(v) => set("villageChiefName", v)}
                 required
               />
               <InputField
-                label="Certifying District / Province"
+                label={t("certifyingJurisdictionLabel")}
                 value={form.certifyingJurisdiction}
-                placeholder="Jurisdiction of the certifying authority"
+                placeholder={t("certifyingJurisdictionPlaceholder")}
                 onChange={(v) => set("certifyingJurisdiction", v)}
                 required
               />
@@ -605,34 +637,34 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  This is the address being attested — the village where you currently reside.
+                  {t("step4Notice")}
                 </p>
               </div>
               <InputField
-                label="Current Village"
+                label={t("currentVillageLabel")}
                 value={form.currentVillage}
-                placeholder="e.g. Ban Phonxay"
+                placeholder={t("currentVillagePlaceholder")}
                 onChange={(v) => set("currentVillage", v)}
                 required
               />
               <InputField
-                label="House No."
+                label={t("houseNoLabel")}
                 value={form.houseNo}
-                placeholder="House number"
+                placeholder={t("houseNoPlaceholder")}
                 onChange={(v) => set("houseNo", v)}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Unit / Nuay Ban (if applicable)"
+                  label={t("unitLabel")}
                   value={form.unitNuayBan}
-                  placeholder="Administrative unit"
+                  placeholder={t("unitPlaceholder")}
                   onChange={(v) => set("unitNuayBan", v)}
                 />
                 <InputField
-                  label="Group / Khum (if applicable)"
+                  label={t("groupLabel")}
                   value={form.groupKhum}
-                  placeholder="Cluster group"
+                  placeholder={t("groupPlaceholder")}
                   onChange={(v) => set("groupKhum", v)}
                 />
               </div>
@@ -643,61 +675,61 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {step === 5 && (
             <>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Household reference (family book)
+                {t("householdHeading")}
               </p>
               <InputField
-                label="Household Census Book No."
+                label={t("censusBookNoLabel")}
                 value={form.censusBookNo}
-                placeholder="Family book number"
+                placeholder={t("censusBookNoPlaceholder")}
                 onChange={(v) => set("censusBookNo", v)}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Census Book Issue Date (if applicable)"
+                  label={t("censusBookDateLabel")}
                   value={form.censusBookDate}
                   onChange={(v) => set("censusBookDate", v)}
                 />
                 <InputField
-                  label="Census District / Province (if applicable)"
+                  label={t("censusDistrictProvinceLabel")}
                   value={form.censusDistrictProvince}
-                  placeholder="Registration jurisdiction"
+                  placeholder={t("censusDistrictProvincePlaceholder")}
                   onChange={(v) => set("censusDistrictProvince", v)}
                 />
               </div>
 
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-1">
-                Parentage (if applicable)
+                {t("parentageHeading")}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Child of Mr. (father)"
+                  label={t("fatherLabel")}
                   value={form.fatherName}
-                  placeholder="Father's full name"
+                  placeholder={t("fatherPlaceholder")}
                   onChange={(v) => set("fatherName", v)}
                 />
                 <InputField
-                  label="and Mrs. (mother)"
+                  label={t("motherLabel")}
                   value={form.motherName}
-                  placeholder="Mother's full name"
+                  placeholder={t("motherPlaceholder")}
                   onChange={(v) => set("motherName", v)}
                 />
               </div>
               <InputField
-                label="Native Village / District / Province (optional)"
+                label={t("nativePlaceLabel")}
                 value={form.nativePlace}
-                placeholder="Home place of the family record"
+                placeholder={t("nativePlacePlaceholder")}
                 onChange={(v) => set("nativePlace", v)}
               />
 
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-1">
-                Purpose
+                {t("purposeHeading")}
               </p>
               <SelectField
-                label="This certificate is used for"
+                label={t("purposeLabel")}
                 value={form.purpose}
-                options={PURPOSES}
-                placeholder="Select purpose..."
+                options={purposeOptions}
+                placeholder={t("purposePlaceholder")}
                 onChange={(v) => set("purpose", v)}
                 required
               />
@@ -708,7 +740,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {step === 6 && (
             <PaymentSection
               amount={fee}
-              serviceName="Residence Certificate"
+              serviceName={t("paymentServiceName")}
               value={form.payment}
               onChange={(patch) => set("payment", { ...form.payment, ...patch })}
               reference={refNo}
@@ -732,16 +764,16 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processing payment…
+                {t("processingPayment")}
               </>
             ) : step === lastStep ? (
               <>
-                Pay {formatLak(fee)}
+                {t("pay", { amount: formatLak(fee, lang) })}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   User,
   Bell,
@@ -13,86 +14,103 @@ import {
   CreditCard,
   Eye,
   Download,
+  X,
 } from "lucide-react";
-import type { Lang } from "../App";
+import { useT } from "../i18n";
+import residentCertPdf from "../../imports/RC 2026 Report.pdf";
+
+const RESIDENT_CERT_REF = "RC-2026-004821";
 
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1600896997793-b8ed3459a17f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzb3V0aGVhc3QlMjBhc2lhbiUyMHByb2Zlc3Npb25hbCUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc3NjY3MDIyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
 const DOCUMENTS = [
   {
+    id: "doc-rc",
+    nameKey: "docResidentCert",
+    number: RESIDENT_CERT_REF,
+    validUntil: "24 Jun 2027",
+    kind: "resident",
+  },
+  {
     id: "doc-1",
-    name: "National ID Card",
+    nameKey: "docNationalId",
     number: "LA-2580-1234-5678",
     validUntil: "31 Dec 2028",
   },
   {
-    id: "doc-2",
-    name: "Resident Certificate",
-    number: "RC-2024-00891",
-    validUntil: "15 Mar 2025",
-  },
-  {
     id: "doc-3",
-    name: "Household Registration",
+    nameKey: "docHousehold",
     number: "HR-VTE-20-4412",
     validUntil: "01 Jan 2030",
   },
-];
+] as const;
 
-const LANG_LABEL: Record<Lang, string> = {
-  en: "English",
-  lo: "ລາວ",
-};
+export function AccountPage() {
+  const t = useT("account");
+  const [showCert, setShowCert] = useState(false);
 
-export function AccountPage({ lang }: { lang: Lang }) {
+  const handleView = (kind?: string) => {
+    if (kind === "resident") setShowCert(true);
+  };
+  const handleDownload = (kind?: string) => {
+    if (kind !== "resident") return;
+    const a = document.createElement("a");
+    a.href = residentCertPdf;
+    a.download = `${RESIDENT_CERT_REF}.pdf`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const settingsItems = [
     {
       icon: Bell,
-      label: lang === "lo" ? "ການແຈ້ງເຕືອນ" : "Notifications",
-      desc: lang === "lo" ? "ຈັດການການແຈ້ງເຕືອນ" : "Manage alerts & reminders",
+      label: t("notifications"),
+      desc: t("notificationsDesc"),
     },
     {
       icon: Globe,
-      label: lang === "lo" ? "ພາສາ" : "Language",
-      desc: LANG_LABEL[lang],
+      label: t("language"),
+      desc: t("languageValue"),
     },
     {
       icon: CreditCard,
-      label: lang === "lo" ? "ວິທີການຊຳລະເງິນ" : "Payment Methods",
-      desc: lang === "lo" ? "ບັດ, ກະເປົ໋າເງິນ" : "Cards, wallets",
+      label: t("paymentMethods"),
+      desc: t("paymentMethodsDesc"),
     },
   ];
 
   const MENU_GROUPS = [
     {
-      title: lang === "lo" ? "ບັນຊີ" : "Account",
+      title: t("groupAccount"),
       items: [
         {
           icon: User,
-          label: lang === "lo" ? "ຂໍ້ມູນສ່ວນຕົວ" : "Personal Information",
-          desc: lang === "lo" ? "ແກ້ໄຂໂປຣໄຟລ໌" : "Edit your profile",
+          label: t("personalInfo"),
+          desc: t("personalInfoDesc"),
         },
-        { icon: Phone, label: lang === "lo" ? "ເບີໂທລະສັບ" : "Phone Number", desc: "+856 20 5551 2345" },
-        { icon: Mail, label: lang === "lo" ? "ອີເມລ" : "Email Address", desc: "somchai@example.la" },
+        { icon: Phone, label: t("phoneNumber"), desc: "+856 20 5551 2345" },
+        { icon: Mail, label: t("emailAddress"), desc: "somchai@example.la" },
       ],
     },
     {
-      title: lang === "lo" ? "ການຕັ້ງຄ່າ" : "Settings",
+      title: t("groupSettings"),
       items: settingsItems,
     },
     {
-      title: lang === "lo" ? "ຄວາມປອດໄພ" : "Security",
+      title: t("groupSecurity"),
       items: [
         {
           icon: Shield,
-          label: lang === "lo" ? "ຄວາມເປັນສ່ວນຕົວ & ຄວາມປອດໄພ" : "Privacy & Security",
-          desc: lang === "lo" ? "PIN, ຊີວະມິຕິ" : "PIN, biometrics",
+          label: t("privacySecurity"),
+          desc: t("privacySecurityDesc"),
         },
         {
           icon: HelpCircle,
-          label: lang === "lo" ? "ຊ່ວຍເຫຼືອ & ສະໜັບສະໜູນ" : "Help & Support",
-          desc: lang === "lo" ? "FAQs, ຕິດຕໍ່ພວກເຮົາ" : "FAQs, contact us",
+          label: t("helpSupport"),
+          desc: t("helpSupportDesc"),
         },
       ],
     },
@@ -136,7 +154,7 @@ export function AccountPage({ lang }: { lang: Lang }) {
           <div className="flex items-center gap-1.5 mt-2 bg-white/10 border border-white/20 rounded-full px-3 py-1">
             <CheckCircle className="w-3 h-3 text-green-400" />
             <span className="text-green-300 text-xs">
-              {lang === "lo" ? "ພົນລະເມືອງທີ່ຢືນຢັນແລ້ວ" : "Verified Citizen"}
+              {t("verifiedCitizen")}
             </span>
           </div>
         </div>
@@ -146,7 +164,7 @@ export function AccountPage({ lang }: { lang: Lang }) {
         {/* My Documents */}
         <div>
           <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-1">
-            {lang === "lo" ? "ເອກະສານຂອງຂ້ອຍ" : "My Documents"}
+            {t("myDocuments")}
           </p>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {DOCUMENTS.map((doc, i) => (
@@ -163,32 +181,34 @@ export function AccountPage({ lang }: { lang: Lang }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-gray-800 text-sm font-medium">{doc.name}</p>
+                      <p className="text-gray-800 text-sm font-medium">{t(doc.nameKey)}</p>
                       <span className="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 text-xs px-2 py-0.5 rounded-full">
                         <CheckCircle className="w-3 h-3" />
-                        {lang === "lo" ? "ຢືນຢັນແລ້ວ" : "Verified"}
+                        {t("verified")}
                       </span>
                     </div>
                     <p className="text-gray-400 text-xs mt-0.5">{doc.number}</p>
                     <p className="text-gray-500 text-xs mt-1">
                       <span className="text-gray-400">
-                        {lang === "lo" ? "ໃຊ້ໄດ້ຈົນ:" : "Valid until:"}
+                        {t("validUntil")}
                       </span>{" "}
                       <span className="font-medium">{doc.validUntil}</span>
                     </p>
                     <div className="flex gap-2 mt-2.5">
                       <button
+                        onClick={() => handleView((doc as { kind?: string }).kind)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        {lang === "lo" ? "ເບິ່ງ" : "View"}
+                        {t("view")}
                       </button>
                       <button
+                        onClick={() => handleDownload((doc as { kind?: string }).kind)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
                         style={{ backgroundColor: "#344EAD" }}
                       >
                         <Download className="w-3.5 h-3.5" />
-                        {lang === "lo" ? "ດາວໂຫລດ" : "Download"}
+                        {t("download")}
                       </button>
                     </div>
                   </div>
@@ -237,7 +257,7 @@ export function AccountPage({ lang }: { lang: Lang }) {
         <button className="w-full flex items-center justify-center gap-2 bg-white rounded-2xl p-4 shadow-sm border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
           <LogOut className="w-4 h-4" />
           <span className="text-sm font-medium">
-            {lang === "lo" ? "ອອກຈາກລະບົບ" : "Sign Out"}
+            {t("signOut")}
           </span>
         </button>
 
@@ -248,6 +268,40 @@ export function AccountPage({ lang }: { lang: Lang }) {
 
         <div className="h-4" />
       </div>
+
+      {/* Residence Certificate preview */}
+      {showCert && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black/60">
+          <div className="flex items-center justify-between px-4 py-3 bg-[#344EAD] text-white flex-shrink-0">
+            <p className="text-sm font-semibold">
+              {t("docResidentCert")} · {RESIDENT_CERT_REF}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleDownload("resident")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 border border-white/20 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {t("download")}
+              </button>
+              <button
+                onClick={() => setShowCert(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/15 hover:bg-white/25 border border-white/20 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto bg-gray-200">
+            <iframe
+              title={RESIDENT_CERT_REF}
+              src={residentCertPdf}
+              className="w-full h-full border-0"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

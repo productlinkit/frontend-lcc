@@ -10,103 +10,103 @@ import {
   Filter,
 } from "lucide-react";
 import { HistoryDetailPage, type HistoryItem } from "./HistoryDetailPage";
+import { useT } from "../i18n";
 
 const HISTORY: HistoryItem[] = [
   {
     id: 1,
-    service: "Resident Certificate",
+    service: "serviceResidentCertificate",
     refNo: "RC-2026-00341",
     date: "18 Apr 2026",
     submittedAt: "15 Apr 2026, 09:24",
     status: "approved",
-    statusLabel: "Approved",
+    statusLabel: "statusApproved",
     fee: "20,000 ₭",
-    office: "Vientiane Capital — District Office",
+    office: "officeVientianeDistrict",
     steps: [
-      { label: "Submitted", date: "15 Apr 2026, 09:24", done: true },
-      { label: "Under Review", date: "16 Apr 2026, 11:05", done: true },
-      { label: "Document Verified", date: "17 Apr 2026, 15:30", done: true },
-      { label: "Approved", date: "18 Apr 2026, 10:12", done: true },
+      { label: "stepSubmitted", date: "15 Apr 2026, 09:24", done: true },
+      { label: "stepUnderReview", date: "16 Apr 2026, 11:05", done: true },
+      { label: "stepDocumentVerified", date: "17 Apr 2026, 15:30", done: true },
+      { label: "stepApproved", date: "18 Apr 2026, 10:12", done: true },
     ],
     currentStep: 3,
   },
   {
     id: 2,
-    service: "Resident Certificate",
+    service: "serviceResidentCertificate",
     refNo: "RC-2026-00289",
     date: "10 Apr 2026",
     submittedAt: "08 Apr 2026, 14:11",
     status: "rejected",
-    statusLabel: "Rejected",
+    statusLabel: "statusRejected",
     fee: "20,000 ₭",
-    office: "Vientiane Capital — District Office",
-    rejectionReason:
-      "The uploaded identity document is unclear and partly cropped. Officials cannot verify your full name and ID number.",
+    office: "officeVientianeDistrict",
+    rejectionReason: "rejectionReasonUnclearId",
     fixSteps: [
-      "Re-scan your National ID using good lighting, no shadows.",
-      "Make sure all four corners of the card are visible.",
-      "Use a resolution of at least 1080p (JPG or PDF, max 5MB).",
-      "Re-upload the document and re-submit the application.",
+      "fixStepRescan",
+      "fixStepCorners",
+      "fixStepResolution",
+      "fixStepReupload",
     ],
     steps: [
-      { label: "Submitted", date: "08 Apr 2026, 14:11", done: true },
-      { label: "Under Review", date: "09 Apr 2026, 09:40", done: true },
-      { label: "Rejected", date: "10 Apr 2026, 16:22", done: true, error: true },
+      { label: "stepSubmitted", date: "08 Apr 2026, 14:11", done: true },
+      { label: "stepUnderReview", date: "09 Apr 2026, 09:40", done: true },
+      { label: "stepRejected", date: "10 Apr 2026, 16:22", done: true, error: true },
     ],
     currentStep: 2,
   },
   {
     id: 3,
-    service: "Biography / CV",
+    service: "serviceBiographyCv",
     refNo: "BCV-2026-00174",
     date: "02 Apr 2026",
     submittedAt: "02 Apr 2026, 08:50",
     status: "pending",
-    statusLabel: "In Review",
+    statusLabel: "statusInReview",
     fee: "15,000 ₭",
-    office: "Ministry of Labour",
+    office: "officeMinistryOfLabour",
     steps: [
-      { label: "Submitted", date: "02 Apr 2026, 08:50", done: true },
-      { label: "Under Review", date: "03 Apr 2026, 10:00", done: true },
-      { label: "Document Verified", date: "Estimated 2 days", done: false },
-      { label: "Approved", date: "—", done: false },
+      { label: "stepSubmitted", date: "02 Apr 2026, 08:50", done: true },
+      { label: "stepUnderReview", date: "03 Apr 2026, 10:00", done: true },
+      { label: "stepDocumentVerified", dateKey: "dateEstimatedDays", done: false },
+      { label: "stepApproved", dateKey: "datePending", done: false },
     ],
     currentStep: 1,
-    estimatedCompletion: "2–3 business days",
+    estimatedCompletion: "eta23BusinessDays",
   },
   {
     id: 4,
-    service: "Birth Certificate",
+    service: "serviceBirthCertificate",
     refNo: "BC-2026-00091",
     date: "20 Mar 2026",
     submittedAt: "16 Mar 2026, 11:30",
     status: "approved",
-    statusLabel: "Approved",
+    statusLabel: "statusApproved",
     fee: "10,000 ₭",
-    office: "Civil Registry — Vientiane",
+    office: "officeCivilRegistryVientiane",
     steps: [
-      { label: "Submitted", date: "16 Mar 2026, 11:30", done: true },
-      { label: "Under Review", date: "17 Mar 2026, 09:15", done: true },
-      { label: "Document Verified", date: "19 Mar 2026, 14:20", done: true },
-      { label: "Approved", date: "20 Mar 2026, 10:00", done: true },
+      { label: "stepSubmitted", date: "16 Mar 2026, 11:30", done: true },
+      { label: "stepUnderReview", date: "17 Mar 2026, 09:15", done: true },
+      { label: "stepDocumentVerified", date: "19 Mar 2026, 14:20", done: true },
+      { label: "stepApproved", date: "20 Mar 2026, 10:00", done: true },
     ],
     currentStep: 3,
   },
   {
     id: 5,
-    service: "General Application",
+    service: "serviceGeneralApplication",
     refNo: "GA-2026-00058",
     date: "10 Mar 2026",
     submittedAt: "07 Mar 2026, 16:00",
     status: "approved",
-    statusLabel: "Approved",
+    statusLabel: "statusApproved",
     fee: "5,000 ₭",
-    office: "District Administrative Office",
+    office: "officeDistrictAdministrative",
     steps: [
-      { label: "Submitted", date: "07 Mar 2026, 16:00", done: true },
-      { label: "Under Review", date: "08 Mar 2026, 09:20", done: true },
-      { label: "Document Verified", date: "09 Mar 2026, 13:00", done: true },
-      { label: "Approved", date: "10 Mar 2026, 11:45", done: true },
+      { label: "stepSubmitted", date: "07 Mar 2026, 16:00", done: true },
+      { label: "stepUnderReview", date: "08 Mar 2026, 09:20", done: true },
+      { label: "stepDocumentVerified", date: "09 Mar 2026, 13:00", done: true },
+      { label: "stepApproved", date: "10 Mar 2026, 11:45", done: true },
     ],
     currentStep: 3,
   },
@@ -114,21 +114,22 @@ const HISTORY: HistoryItem[] = [
 
 const STATUS_CONFIG: Record<
   string,
-  { bg: string; text: string; ring: string; icon: React.ElementType; label: string }
+  { bg: string; text: string; ring: string; icon: React.ElementType }
 > = {
-  approved: { bg: "#DCFCE7", text: "#16A34A", ring: "#86EFAC", icon: CheckCircle, label: "Approved" },
-  rejected: { bg: "#FEE2E2", text: "#DC2626", ring: "#FCA5A5", icon: XCircle, label: "Rejected" },
-  pending: { bg: "#FEF3C7", text: "#D97706", ring: "#FCD34D", icon: Clock, label: "In Review" },
+  approved: { bg: "#DCFCE7", text: "#16A34A", ring: "#86EFAC", icon: CheckCircle },
+  rejected: { bg: "#FEE2E2", text: "#DC2626", ring: "#FCA5A5", icon: XCircle },
+  pending: { bg: "#FEF3C7", text: "#D97706", ring: "#FCD34D", icon: Clock },
 };
 
 const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "In Review" },
-  { id: "approved", label: "Approved" },
-  { id: "rejected", label: "Rejected" },
-];
+  { id: "all", labelKey: "filterAll" },
+  { id: "pending", labelKey: "filterInReview" },
+  { id: "approved", labelKey: "filterApproved" },
+  { id: "rejected", labelKey: "filterRejected" },
+] as const;
 
 export function HistoryPage() {
+  const t = useT("history");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
@@ -149,7 +150,7 @@ export function HistoryPage() {
     const q = query.trim().toLowerCase();
     const matchesQuery =
       !q ||
-      h.service.toLowerCase().includes(q) ||
+      t(h.service as "serviceResidentCertificate").toLowerCase().includes(q) ||
       h.refNo.toLowerCase().includes(q);
     return matchesFilter && matchesQuery;
   });
@@ -172,17 +173,15 @@ export function HistoryPage() {
         }}
       >
         <div className="max-w-screen-xl mx-auto">
-          <h1 className="text-white">Application History</h1>
-          <p className="text-white/70 text-sm mt-1">
-            Track every request you've submitted
-          </p>
+          <h1 className="text-white">{t("title")}</h1>
+          <p className="text-white/70 text-sm mt-1">{t("subtitle")}</p>
 
           {/* Search */}
           <div className="mt-5 flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-md">
             <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search by service or reference number..."
+              placeholder={t("searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder:text-gray-400"
@@ -196,10 +195,10 @@ export function HistoryPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total", value: counts.total, color: "#344EAD", bg: "#EEF2FF" },
-            { label: "Approved", value: counts.approved, color: "#16A34A", bg: "#DCFCE7" },
-            { label: "In Review", value: counts.pending, color: "#D97706", bg: "#FEF3C7" },
-            { label: "Rejected", value: counts.rejected, color: "#DC2626", bg: "#FEE2E2" },
+            { label: t("statTotal"), value: counts.total, color: "#344EAD", bg: "#EEF2FF" },
+            { label: t("statApproved"), value: counts.approved, color: "#16A34A", bg: "#DCFCE7" },
+            { label: t("statInReview"), value: counts.pending, color: "#D97706", bg: "#FEF3C7" },
+            { label: t("statRejected"), value: counts.rejected, color: "#DC2626", bg: "#FEE2E2" },
           ].map((s) => (
             <div
               key={s.label}
@@ -246,7 +245,7 @@ export function HistoryPage() {
                       }
                 }
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             );
           })}
@@ -258,8 +257,8 @@ export function HistoryPage() {
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
               <FileText className="w-6 h-6 text-gray-400" />
             </div>
-            <p className="text-gray-700 text-sm font-medium">No applications found</p>
-            <p className="text-gray-400 text-xs mt-1">Try a different filter or search</p>
+            <p className="text-gray-700 text-sm font-medium">{t("emptyTitle")}</p>
+            <p className="text-gray-400 text-xs mt-1">{t("emptySubtitle")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -298,17 +297,17 @@ export function HistoryPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-gray-800 text-sm font-semibold leading-snug">
-                            {item.service}
+                            {t(item.service as "serviceResidentCertificate")}
                           </p>
                           <p className="text-gray-400 text-xs mt-0.5">
-                            Ref · {item.refNo}
+                            {t("ref")} · {item.refNo}
                           </p>
                         </div>
                         <span
                           className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide"
                           style={{ backgroundColor: config.bg, color: config.text }}
                         >
-                          {item.statusLabel}
+                          {t(item.statusLabel as "statusApproved")}
                         </span>
                       </div>
 
@@ -316,8 +315,14 @@ export function HistoryPage() {
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
                           <span>
-                            Step {item.currentStep + 1} of {totalSteps} ·{" "}
-                            {item.steps[item.currentStep].label}
+                            {t("stepProgress", {
+                              current: item.currentStep + 1,
+                              total: totalSteps,
+                              label: t(
+                                item.steps[item.currentStep]
+                                  .label as "stepSubmitted"
+                              ),
+                            })}
                           </span>
                           <span>{progressPct}%</span>
                         </div>
@@ -339,13 +344,13 @@ export function HistoryPage() {
 
                       <div className="flex items-center justify-between mt-3">
                         <p className="text-[11px] text-gray-400">
-                          Submitted {item.date}
+                          {t("submittedOn", { date: item.date })}
                         </p>
                         <span
                           className="flex items-center gap-1 text-xs font-medium group-hover:gap-1.5 transition-all"
                           style={{ color: "#344EAD" }}
                         >
-                          View details
+                          {t("viewDetails")}
                           <ChevronRight className="w-3.5 h-3.5" />
                         </span>
                       </div>

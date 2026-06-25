@@ -12,6 +12,8 @@ import {
   Info,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import { useT, useLang } from "../i18n";
+import { formatLak } from "../serviceConfig";
 
 /*
  * Death Declaration — follows the PRD §7 (Death Declaration Form, ໃບແຈ້ງເສຍຊີວິດ,
@@ -90,12 +92,12 @@ interface InformantInfo {
 
 /* ─── Constants ─── */
 const STEPS = [
-  { id: 1, label: "Header", subtitle: "Jurisdiction and document details" },
-  { id: 2, label: "The Deceased", subtitle: "Details of the deceased person" },
-  { id: 3, label: "Mother", subtitle: "Mother of the deceased" },
-  { id: 4, label: "Father", subtitle: "Father of the deceased" },
-  { id: 5, label: "Informant", subtitle: "Reporter of the death" },
-  { id: 6, label: "Review", subtitle: "Check and submit your declaration" },
+  { id: 1 },
+  { id: 2 },
+  { id: 3 },
+  { id: 4 },
+  { id: 5 },
+  { id: 6 },
 ];
 
 const GENDERS = ["Female", "Male"];
@@ -201,10 +203,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+type DeathT = ReturnType<typeof useT<"death">>;
+
 /* ─── Reusable address group ─── */
 function AddressFields({
-  houseNo, village, district, province, onChange, required = true,
+  t, houseNo, village, district, province, onChange, required = true,
 }: {
+  t: DeathT;
   houseNo: string; village: string; district: string; province: string;
   onChange: (patch: Partial<{ addrHouseNo: string; addrVillage: string; addrDistrict: string; addrProvince: string }>) => void;
   required?: boolean;
@@ -212,15 +217,16 @@ function AddressFields({
   return (
     <>
       <InputField
-        label="House No."
+        label={t("houseNo")}
         value={houseNo}
-        placeholder="House number"
+        placeholder={t("phHouseNo")}
         onChange={(v) => onChange({ addrHouseNo: v })}
       />
       <LocationFields
         province={province}
         district={district}
         village={village}
+        villageLabel={t("villageLabel")}
         required={required}
         onChange={(p) =>
           onChange({
@@ -236,70 +242,71 @@ function AddressFields({
 
 /* ─── Parent section (Mother / Father of the deceased — PRD §7.4) ─── */
 function ParentSection({
-  value, onChange,
+  t, value, onChange,
 }: {
-  value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
+  t: DeathT; value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
 }) {
   return (
     <>
       <InputField
-        label="Full Name (Lao / English)"
+        label={t("fullName")}
         value={value.fullName}
-        placeholder="Full name"
+        placeholder={t("phFullName")}
         onChange={(v) => onChange({ fullName: v })}
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <DateField
-          label="Date of Birth (optional)"
+          label={t("dobOptional")}
           value={value.dob}
           onChange={(v) => onChange({ dob: v })}
         />
         <SelectField
-          label="Marital Status (optional)"
+          label={t("maritalStatusOptional")}
           value={value.maritalStatus}
           options={MARITAL}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ maritalStatus: v })}
         />
       </div>
 
-      <SectionLabel>Demographics (optional)</SectionLabel>
+      <SectionLabel>{t("secDemographics")}</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnicity"
+          label={t("ethnicity")}
           value={value.ethnicity}
           options={ETHNICITIES}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ ethnicity: v })}
         />
         <SelectField
-          label="Nationality"
+          label={t("nationality")}
           value={value.nationality}
           options={NATIONALITIES}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ nationality: v })}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnic Group"
+          label={t("ethnicGroup")}
           value={value.ethnicGroup}
           options={ETHNIC_GROUPS}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ ethnicGroup: v })}
         />
         <SelectField
-          label="Religion"
+          label={t("religion")}
           value={value.religion}
           options={RELIGIONS}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ religion: v })}
         />
       </div>
 
-      <SectionLabel>Current address (if applicable)</SectionLabel>
+      <SectionLabel>{t("secCurrentAddressOptional")}</SectionLabel>
       <AddressFields
+        t={t}
         houseNo={value.addrHouseNo}
         village={value.addrVillage}
         district={value.addrDistrict}
@@ -309,39 +316,39 @@ function ParentSection({
       />
 
       <InputField
-        label="Census Book No. / ID Card No. (if applicable)"
+        label={t("censusOrIdOptional")}
         value={value.censusOrId}
-        placeholder="One identifier + issue date"
+        placeholder={t("phOneIdentifier")}
         onChange={(v) => onChange({ censusOrId: v })}
       />
 
-      <SectionLabel>Education & work (optional)</SectionLabel>
+      <SectionLabel>{t("secEducationWork")}</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Education Level"
+          label={t("educationLevel")}
           value={value.education}
           options={EDUCATION}
-          placeholder="Select..."
+          placeholder={t("phSelect")}
           onChange={(v) => onChange({ education: v })}
         />
         <InputField
-          label="Occupation"
+          label={t("occupation")}
           value={value.occupation}
-          placeholder="Occupation"
+          placeholder={t("phOccupation")}
           onChange={(v) => onChange({ occupation: v })}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <InputField
-          label="Workplace"
+          label={t("workplace")}
           value={value.workplace}
-          placeholder="Workplace"
+          placeholder={t("phWorkplace")}
           onChange={(v) => onChange({ workplace: v })}
         />
         <InputField
-          label="Fingerprint Code"
+          label={t("fingerprintCode")}
           value={value.fingerprint}
-          placeholder="Biometric code"
+          placeholder={t("phBiometric")}
           onChange={(v) => onChange({ fingerprint: v })}
         />
       </div>
@@ -351,9 +358,9 @@ function ParentSection({
 
 /* ─── Parent step with a "deceased / unknown" toggle (PRD §7.4 note) ─── */
 function ParentStep({
-  intro, value, onChange, skip, onToggleSkip,
+  t, intro, value, onChange, skip, onToggleSkip,
 }: {
-  intro: string; value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
+  t: DeathT; intro: string; value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
   skip: boolean; onToggleSkip: () => void;
 }) {
   return (
@@ -375,8 +382,8 @@ function ParentStep({
         <div className="flex items-start gap-2.5">
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
           <div>
-            <p className="text-sm font-medium text-gray-800">Parent deceased / unknown</p>
-            <p className="text-xs text-gray-400 mt-0.5">Skip this section</p>
+            <p className="text-sm font-medium text-gray-800">{t("parentDeceasedUnknown")}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t("skipThisSection")}</p>
           </div>
         </div>
         <div
@@ -390,7 +397,7 @@ function ParentStep({
         </div>
       </button>
 
-      {!skip && <ParentSection value={value} onChange={onChange} />}
+      {!skip && <ParentSection t={t} value={value} onChange={onChange} />}
     </>
   );
 }
@@ -433,15 +440,14 @@ function StepIndicator({ step }: { step: number }) {
   );
 }
 
-function StepHeader({ step }: { step: number }) {
-  const meta = STEPS.find((s) => s.id === step)!;
+function StepHeader({ t, step }: { t: DeathT; step: number }) {
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEPS.length })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(`step${step}Title` as "step1Title")}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(`step${step}Subtitle` as "step1Subtitle")}</p>
     </div>
   );
 }
@@ -452,6 +458,8 @@ interface DeathDeclarationPageProps {
 }
 
 export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
+  const t = useT("death");
+  const { lang } = useLang();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -523,18 +531,19 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Death Declaration Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              The declaration has been received. On approval, the deceased will be removed from the household record.
+              {t("successText")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Deceased", value: deceased.fullName || "—" },
-              { label: "Document No.", value: documentNo },
-              { label: "Informant", value: informant.fullName || "—" },
-              { label: "Est. review", value: "≤ 5 working days" },
-              { label: "Status", value: "Submitted", isStatus: true },
+              { label: t("sumDeceased"), value: deceased.fullName || t("dash") },
+              { label: t("sumDocumentNo"), value: documentNo },
+              { label: t("sumInformant"), value: informant.fullName || t("dash") },
+              { label: t("sumFee"), value: formatLak(0, lang) },
+              { label: t("sumEstReview"), value: t("sumEstReviewValue") },
+              { label: t("sumStatus"), value: t("sumStatusValue"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -553,9 +562,9 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your declaration in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -574,8 +583,8 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Death Declaration</p>
-            <p className="text-xs text-gray-400">Online Application</p>
+            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
+            <p className="text-xs text-gray-400">{t("subtitle")}</p>
           </div>
           <div className="w-9 flex-shrink-0" />
         </div>
@@ -588,18 +597,18 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-screen-sm mx-auto px-4 py-6 space-y-5 pb-28">
 
-          <StepHeader step={step} />
+          <StepHeader t={t} step={step} />
 
           {/* Step 1 — Header */}
           {step === 1 && (
             <>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Document No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("documentNo")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{documentNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
                 </span>
               </div>
 
@@ -607,6 +616,7 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 province={header.province}
                 district={header.district}
                 village={header.village}
+                villageLabel={t("villageLabel")}
                 required
                 onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
@@ -614,9 +624,9 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Scale className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: "#344EAD" }}>Legal basis</p>
+                  <p className="text-xs font-semibold" style={{ color: "#344EAD" }}>{t("legalBasis")}</p>
                   <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#344EAD" }}>
-                    Pursuant to the Family Law No. 44/NA, dated 14/06/2018. The date of declaration is set automatically on submission.
+                    {t("legalBasisText")}
                   </p>
                 </div>
               </div>
@@ -629,28 +639,28 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <UserMinus className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Section 1 — details of the deceased person.
+                  {t("deceasedIntro")}
                 </p>
               </div>
 
               <InputField
-                label="Full Name (Lao / English)"
+                label={t("fullName")}
                 value={deceased.fullName}
-                placeholder="Deceased's full name"
+                placeholder={t("phDeceasedName")}
                 onChange={(v) => patchDeceased({ fullName: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Gender"
+                  label={t("gender")}
                   value={deceased.gender}
                   options={GENDERS}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ gender: v })}
                   required
                 />
                 <DateField
-                  label="Date of Birth"
+                  label={t("dob")}
                   value={deceased.dob}
                   onChange={(v) => patchDeceased({ dob: v })}
                   required
@@ -658,33 +668,34 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Ethnicity"
+                  label={t("ethnicity")}
                   value={deceased.ethnicity}
                   options={ETHNICITIES}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ ethnicity: v })}
                   required
                 />
                 <SelectField
-                  label="Nationality"
+                  label={t("nationality")}
                   value={deceased.nationality}
                   options={NATIONALITIES}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ nationality: v })}
                   required
                 />
               </div>
               <SelectField
-                label="Marital Status"
+                label={t("maritalStatus")}
                 value={deceased.maritalStatus}
                 options={MARITAL}
-                placeholder="Select..."
+                placeholder={t("phSelect")}
                 onChange={(v) => patchDeceased({ maritalStatus: v })}
                 required
               />
 
-              <SectionLabel>Current address</SectionLabel>
+              <SectionLabel>{t("secCurrentAddress")}</SectionLabel>
               <AddressFields
+                t={t}
                 houseNo={deceased.addrHouseNo}
                 village={deceased.addrVillage}
                 district={deceased.addrDistrict}
@@ -692,18 +703,19 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 onChange={patchDeceased}
               />
               <InputField
-                label="Census Book No. / ID Card No."
+                label={t("censusOrId")}
                 value={deceased.censusOrId}
-                placeholder="One identifier + issue date"
+                placeholder={t("phOneIdentifier")}
                 onChange={(v) => patchDeceased({ censusOrId: v })}
                 required
               />
 
-              <SectionLabel>Place of death</SectionLabel>
+              <SectionLabel>{t("secPlaceOfDeath")}</SectionLabel>
               <LocationFields
                 province={deceased.podProvince}
                 district={deceased.podDistrict}
                 village={deceased.podVillage}
+                villageLabel={t("villageLabel")}
                 required
                 onChange={(p) =>
                   patchDeceased({
@@ -714,82 +726,82 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 }
               />
 
-              <SectionLabel>The death</SectionLabel>
+              <SectionLabel>{t("secTheDeath")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Date of Death"
+                  label={t("dateOfDeath")}
                   value={deceased.dateOfDeath}
                   onChange={(v) => patchDeceased({ dateOfDeath: v })}
                   required
                 />
                 <InputField
-                  label="Time of Death (optional)"
+                  label={t("timeOfDeathOptional")}
                   value={deceased.timeOfDeath}
-                  placeholder="HH:MM"
+                  placeholder={t("phTime")}
                   onChange={(v) => patchDeceased({ timeOfDeath: v })}
                 />
               </div>
               <SelectField
-                label="Cause of Death"
+                label={t("causeOfDeath")}
                 value={deceased.cause}
                 options={CAUSES}
-                placeholder="Select..."
+                placeholder={t("phSelect")}
                 onChange={(v) => patchDeceased({ cause: v })}
                 required
               />
               {deceased.cause === "Other" && (
                 <InputField
-                  label="Cause — please specify"
+                  label={t("causeSpecify")}
                   value={deceased.causeOther}
-                  placeholder="Specify the cause"
+                  placeholder={t("phSpecifyCause")}
                   onChange={(v) => patchDeceased({ causeOther: v })}
                   required
                 />
               )}
 
-              <SectionLabel>Education & work (optional)</SectionLabel>
+              <SectionLabel>{t("secEducationWork")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Education Level"
+                  label={t("educationLevel")}
                   value={deceased.education}
                   options={EDUCATION}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ education: v })}
                 />
                 <InputField
-                  label="Occupation"
+                  label={t("occupation")}
                   value={deceased.occupation}
-                  placeholder="Occupation"
+                  placeholder={t("phOccupation")}
                   onChange={(v) => patchDeceased({ occupation: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Workplace"
+                  label={t("workplace")}
                   value={deceased.workplace}
-                  placeholder="Workplace"
+                  placeholder={t("phWorkplace")}
                   onChange={(v) => patchDeceased({ workplace: v })}
                 />
                 <InputField
-                  label="Fingerprint Code"
+                  label={t("fingerprintCode")}
                   value={deceased.fingerprint}
-                  placeholder="Biometric code"
+                  placeholder={t("phBiometric")}
                   onChange={(v) => patchDeceased({ fingerprint: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Ethnic Group"
+                  label={t("ethnicGroup")}
                   value={deceased.ethnicGroup}
                   options={ETHNIC_GROUPS}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ ethnicGroup: v })}
                 />
                 <SelectField
-                  label="Religion"
+                  label={t("religion")}
                   value={deceased.religion}
                   options={RELIGIONS}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ religion: v })}
                 />
               </div>
@@ -799,7 +811,8 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
           {/* Step 3 — Mother */}
           {step === 3 && (
             <ParentStep
-              intro="Section 2 — the mother of the deceased."
+              t={t}
+              intro={t("motherIntro")}
               value={mother}
               onChange={patchMother}
               skip={motherSkip}
@@ -810,7 +823,8 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
           {/* Step 4 — Father */}
           {step === 4 && (
             <ParentStep
-              intro="Section 3 — the father of the deceased."
+              t={t}
+              intro={t("fatherIntro")}
               value={father}
               onChange={patchFather}
               skip={fatherSkip}
@@ -824,35 +838,36 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Users className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Section 4 — the person reporting the death.
+                  {t("informantIntro")}
                 </p>
               </div>
 
               <InputField
-                label="Full Name (Lao / English)"
+                label={t("fullName")}
                 value={informant.fullName}
-                placeholder="Informant's full name"
+                placeholder={t("phInformantName")}
                 onChange={(v) => patchInformant({ fullName: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Date of Birth"
+                  label={t("dob")}
                   value={informant.dob}
                   onChange={(v) => patchInformant({ dob: v })}
                   required
                 />
                 <InputField
-                  label="Relationship to Deceased"
+                  label={t("relationshipToDeceased")}
                   value={informant.relationship}
-                  placeholder="e.g. Son, Spouse"
+                  placeholder={t("phRelationship")}
                   onChange={(v) => patchInformant({ relationship: v })}
                   required
                 />
               </div>
 
-              <SectionLabel>Current address</SectionLabel>
+              <SectionLabel>{t("secCurrentAddress")}</SectionLabel>
               <AddressFields
+                t={t}
                 houseNo={informant.addrHouseNo}
                 village={informant.addrVillage}
                 district={informant.addrDistrict}
@@ -861,59 +876,59 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               />
 
               <InputField
-                label="Census Book No. / ID Card No."
+                label={t("censusOrId")}
                 value={informant.censusOrId}
-                placeholder="One identifier + issue date"
+                placeholder={t("phOneIdentifier")}
                 onChange={(v) => patchInformant({ censusOrId: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Phone Number"
+                  label={t("phoneNumber")}
                   value={informant.phone}
-                  placeholder="+856..."
+                  placeholder={t("phPhone")}
                   inputMode="tel"
                   onChange={(v) => patchInformant({ phone: v })}
                   required
                 />
                 <InputField
-                  label="Email (optional)"
+                  label={t("emailOptional")}
                   value={informant.email}
-                  placeholder="name@email.com"
+                  placeholder={t("phEmail")}
                   inputMode="email"
                   onChange={(v) => patchInformant({ email: v })}
                 />
               </div>
 
-              <SectionLabel>Additional details (optional)</SectionLabel>
+              <SectionLabel>{t("secAdditionalDetails")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Marital Status"
+                  label={t("maritalStatus")}
                   value={informant.maritalStatus}
                   options={MARITAL}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchInformant({ maritalStatus: v })}
                 />
                 <SelectField
-                  label="Education Level"
+                  label={t("educationLevel")}
                   value={informant.education}
                   options={EDUCATION}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchInformant({ education: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Nationality"
+                  label={t("nationality")}
                   value={informant.nationality}
                   options={NATIONALITIES}
-                  placeholder="Select..."
+                  placeholder={t("phSelect")}
                   onChange={(v) => patchInformant({ nationality: v })}
                 />
                 <InputField
-                  label="Fingerprint Code"
+                  label={t("fingerprintCode")}
                   value={informant.fingerprint}
-                  placeholder="Biometric code"
+                  placeholder={t("phBiometric")}
                   onChange={(v) => patchInformant({ fingerprint: v })}
                 />
               </div>
@@ -926,41 +941,41 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Please review the declaration before submitting. The Village Chief and informant sign the form at the village office.
+                  {t("reviewWarning")}
                 </p>
               </div>
 
               {[
                 {
-                  title: "Header",
+                  title: t("step1Title"),
                   rows: [
-                    ["Province / District / Village", [header.province, header.district, header.village].filter(Boolean).join(" / ") || "—"],
-                    ["Document No.", documentNo],
+                    [t("rowProvinceDistrictVillage"), [header.province, header.district, header.village].filter(Boolean).join(" / ") || t("dash")],
+                    [t("documentNo"), documentNo],
                   ],
                 },
                 {
-                  title: "The Deceased",
+                  title: t("step2Title"),
                   rows: [
-                    ["Name", deceased.fullName || "—"],
-                    ["Gender / DoB", [deceased.gender, deceased.dob].filter(Boolean).join(" · ") || "—"],
-                    ["Place of death", [deceased.podVillage, deceased.podDistrict, deceased.podProvince].filter(Boolean).join(", ") || "—"],
-                    ["Date / cause", [deceased.dateOfDeath, deceased.cause === "Other" ? deceased.causeOther : deceased.cause].filter(Boolean).join(" · ") || "—"],
+                    [t("rowName"), deceased.fullName || t("dash")],
+                    [t("rowGenderDob"), [deceased.gender, deceased.dob].filter(Boolean).join(" · ") || t("dash")],
+                    [t("rowPlaceOfDeath"), [deceased.podVillage, deceased.podDistrict, deceased.podProvince].filter(Boolean).join(", ") || t("dash")],
+                    [t("rowDateCause"), [deceased.dateOfDeath, deceased.cause === "Other" ? deceased.causeOther : deceased.cause].filter(Boolean).join(" · ") || t("dash")],
                   ],
                 },
                 {
-                  title: "Mother",
-                  rows: motherSkip ? [["Status", "Deceased / unknown"]] : [["Name", mother.fullName || "—"]],
+                  title: t("step3Title"),
+                  rows: motherSkip ? [[t("rowStatus"), t("statusDeceasedUnknown")]] : [[t("rowName"), mother.fullName || t("dash")]],
                 },
                 {
-                  title: "Father",
-                  rows: fatherSkip ? [["Status", "Deceased / unknown"]] : [["Name", father.fullName || "—"]],
+                  title: t("step4Title"),
+                  rows: fatherSkip ? [[t("rowStatus"), t("statusDeceasedUnknown")]] : [[t("rowName"), father.fullName || t("dash")]],
                 },
                 {
-                  title: "Informant",
+                  title: t("step5Title"),
                   rows: [
-                    ["Name", informant.fullName || "—"],
-                    ["Relationship", informant.relationship || "—"],
-                    ["Phone", informant.phone || "—"],
+                    [t("rowName"), informant.fullName || t("dash")],
+                    [t("rowRelationship"), informant.relationship || t("dash")],
+                    [t("rowPhone"), informant.phone || t("dash")],
                   ],
                 },
               ].map((card) => (
@@ -994,16 +1009,16 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
+                {t("submitting")}
               </>
             ) : step === lastStep ? (
               <>
-                Submit Declaration
+                {t("submitDeclaration")}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

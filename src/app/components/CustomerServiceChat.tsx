@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Send, MessageCircle, Bot, User, Phone, Mail, ChevronDown } from "lucide-react";
+import { useT } from "../i18n";
 
 interface Message {
   id: number;
@@ -8,41 +9,30 @@ interface Message {
   time: string;
 }
 
+// Quick replies map to their canned bot response by namespace key.
 const QUICK_REPLIES = [
-  "How to apply for Birth Certificate?",
-  "Track my application",
-  "Required documents",
-  "Office hours",
-];
-
-const BOT_RESPONSES: Record<string, string> = {
-  "How to apply for Birth Certificate?":
-    "To apply for a Birth Certificate:\n1. Go to 'Services' → 'Birth Certificate'\n2. Fill in the required information\n3. Upload supporting documents\n4. Submit and pay the fee (20,000 LAK)\n\nProcessing takes 3–5 business days. 📄",
-  "Track my application":
-    "You can track your application status in the **History** tab at the bottom navigation. All submitted applications will be listed there with real-time status updates. 🔍",
-  "Required documents":
-    "General required documents:\n• National ID Card\n• Household Registration Book\n• Passport-sized photo\n\nSpecific documents may vary by service type. Please check each service for details. 📋",
-  "Office hours":
-    "Our office hours are:\n🕗 Monday – Friday: 08:00 – 17:00\n🕗 Saturday: 08:00 – 12:00\n🚫 Sunday & Public Holidays: Closed\n\nOnline services are available 24/7! 🌐",
-};
+  { label: "qrBirthCert", response: "respBirthCert" },
+  { label: "qrTrack", response: "respTrack" },
+  { label: "qrDocuments", response: "respDocuments" },
+  { label: "qrHours", response: "respHours" },
+] as const;
 
 function getTime() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: 1,
-    from: "bot",
-    text: "Sabaidi! 👋 Welcome to Lao Citizen Center support. How can I help you today?",
-    time: getTime(),
-  },
-];
-
 export function CustomerServiceChat() {
+  const t = useT("chat");
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      id: 1,
+      from: "bot",
+      text: t("greeting"),
+      time: getTime(),
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -57,7 +47,7 @@ export function CustomerServiceChat() {
     }
   }, [messages, open, minimized]);
 
-  const sendMessage = (text: string) => {
+  const sendMessage = (text: string, responseKey?: "respBirthCert" | "respTrack" | "respDocuments" | "respHours") => {
     if (!text.trim()) return;
 
     const userMsg: Message = { id: Date.now(), from: "user", text, time: getTime() };
@@ -66,9 +56,7 @@ export function CustomerServiceChat() {
     setIsTyping(true);
 
     setTimeout(() => {
-      const response =
-        BOT_RESPONSES[text] ||
-        "Thank you for your message! Our team will get back to you shortly. For urgent matters, please call us at **+856 21 123456** or email **support@laocitizen.gov.la** 😊";
+      const response = responseKey ? t(responseKey) : t("fallback");
 
       const botMsg: Message = {
         id: Date.now() + 1,
@@ -122,25 +110,31 @@ export function CustomerServiceChat() {
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />
               </div>
               <div>
-                <p className="text-white text-sm font-semibold leading-tight">LCC Support</p>
-                <p className="text-white/60 text-xs">Online · Replies instantly</p>
+                <p className="text-white text-sm font-semibold leading-tight">{t("agentName")}</p>
+                <p className="text-white/60 text-xs">{t("status")}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <a
                 href="tel:+85621123456"
+                aria-label={t("callUs")}
+                title={t("callUs")}
                 className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all"
               >
                 <Phone className="w-4 h-4 text-white" />
               </a>
               <a
                 href="mailto:support@laocitizen.gov.la"
+                aria-label={t("emailUs")}
+                title={t("emailUs")}
                 className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all"
               >
                 <Mail className="w-4 h-4 text-white" />
               </a>
               <button
                 onClick={() => setMinimized((m) => !m)}
+                aria-label={t("minimize")}
+                title={t("minimize")}
                 className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all"
               >
                 <ChevronDown
@@ -150,6 +144,8 @@ export function CustomerServiceChat() {
               </button>
               <button
                 onClick={() => setOpen(false)}
+                aria-label={t("close")}
+                title={t("close")}
                 className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all"
               >
                 <X className="w-4 h-4 text-white" />
@@ -243,8 +239,8 @@ export function CustomerServiceChat() {
               <div className="bg-white border-t border-gray-100 px-3 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide flex-shrink-0">
                 {QUICK_REPLIES.map((qr) => (
                   <button
-                    key={qr}
-                    onClick={() => sendMessage(qr)}
+                    key={qr.label}
+                    onClick={() => sendMessage(t(qr.label), qr.response)}
                     className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full border transition-all duration-200 hover:text-white hover:border-transparent"
                     style={{ borderColor: "#344EAD", color: "#344EAD" }}
                     onMouseEnter={(e) => {
@@ -255,7 +251,7 @@ export function CustomerServiceChat() {
                       (e.currentTarget as HTMLButtonElement).style.color = "#344EAD";
                     }}
                   >
-                    {qr}
+                    {t(qr.label)}
                   </button>
                 ))}
               </div>
@@ -268,12 +264,14 @@ export function CustomerServiceChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-                  placeholder="Type your message..."
+                  placeholder={t("placeholder")}
                   className="flex-1 bg-gray-100 rounded-xl px-4 py-2.5 text-sm outline-none text-gray-700 placeholder:text-gray-400"
                 />
                 <button
                   onClick={() => sendMessage(input)}
                   disabled={!input.trim()}
+                  aria-label={t("send")}
+                  title={t("send")}
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:opacity-40"
                   style={{ backgroundColor: "#344EAD" }}
                 >
@@ -289,6 +287,8 @@ export function CustomerServiceChat() {
       {!open && (
         <button
           onClick={handleOpen}
+          aria-label={t("openChat")}
+          title={t("openChat")}
           className="fixed z-50 bottom-24 right-4 lg:bottom-8 lg:right-8 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
           style={{ backgroundColor: "#344EAD" }}
         >

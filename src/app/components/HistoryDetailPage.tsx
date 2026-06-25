@@ -15,28 +15,39 @@ import {
   Upload,
   ListChecks,
 } from "lucide-react";
+import { useT } from "../i18n";
 
 export interface HistoryStep {
+  /** translation key for the step label */
   label: string;
-  date: string;
+  /** literal date string, used when dateKey is not provided */
+  date?: string;
+  /** translation key for the date label (e.g. "Estimated 2 days", "—") */
+  dateKey?: string;
   done: boolean;
   error?: boolean;
 }
 
 export interface HistoryItem {
   id: number;
+  /** translation key for the service name */
   service: string;
   refNo: string;
   date: string;
   submittedAt: string;
   status: "approved" | "rejected" | "pending";
+  /** translation key for the status label */
   statusLabel: string;
   fee: string;
+  /** translation key for the processing office */
   office: string;
   steps: HistoryStep[];
   currentStep: number;
+  /** translation key for the rejection reason */
   rejectionReason?: string;
+  /** translation keys for the fix steps */
   fixSteps?: string[];
+  /** translation key for the estimated completion time */
   estimatedCompletion?: string;
 }
 
@@ -49,27 +60,28 @@ const STATUS_THEME = {
   approved: {
     color: "#16A34A",
     bg: "#DCFCE7",
-    headline: "Application approved",
-    sub: "Your document is ready to download.",
+    headlineKey: "approvedHeadline",
+    subKey: "approvedSub",
     icon: CheckCircle2,
   },
   rejected: {
     color: "#DC2626",
     bg: "#FEE2E2",
-    headline: "Application rejected",
-    sub: "Please review the reason below and resubmit.",
+    headlineKey: "rejectedHeadline",
+    subKey: "rejectedSub",
     icon: XCircle,
   },
   pending: {
     color: "#D97706",
     bg: "#FEF3C7",
-    headline: "Application in review",
-    sub: "Officials are currently processing your request.",
+    headlineKey: "pendingHeadline",
+    subKey: "pendingSub",
     icon: Clock,
   },
 } as const;
 
 export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
+  const t = useT("history");
   const theme = STATUS_THEME[item.status];
   const StatusIcon = theme.icon;
 
@@ -94,13 +106,13 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
               className="flex items-center gap-1 text-white/80 hover:text-white text-sm transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
-              Back to history
+              {t("backToHistory")}
             </button>
             <span
               className="flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full uppercase tracking-wide"
               style={{ backgroundColor: theme.bg, color: theme.color }}
             >
-              {item.statusLabel}
+              {t(item.statusLabel as "statusApproved")}
             </span>
           </div>
 
@@ -110,9 +122,11 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-white/70 text-xs uppercase tracking-wider">
-                Application
+                {t("applicationLabel")}
               </p>
-              <h1 className="text-white leading-tight">{item.service}</h1>
+              <h1 className="text-white leading-tight">
+                {t(item.service as "serviceResidentCertificate")}
+              </h1>
               <div className="flex items-center gap-2 mt-1">
                 <Hash className="w-3 h-3 text-white/60" />
                 <p className="text-white/70 text-sm">{item.refNo}</p>
@@ -138,14 +152,14 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                 className="text-sm font-semibold"
                 style={{ color: theme.color }}
               >
-                {theme.headline}
+                {t(theme.headlineKey)}
               </p>
-              <p className="text-gray-500 text-xs mt-0.5">{theme.sub}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{t(theme.subKey)}</p>
 
               {/* Progress bar */}
               <div className="mt-3">
                 <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
-                  <span>Overall progress</span>
+                  <span>{t("overallProgress")}</span>
                   <span>{progressPct}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -169,7 +183,7 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                 style={{ backgroundColor: "#344EAD" }}
               >
                 <Download className="w-4 h-4" />
-                Download document
+                {t("downloadDocument")}
               </button>
             )}
             {item.status === "rejected" && (
@@ -178,7 +192,7 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                 style={{ backgroundColor: "#344EAD" }}
               >
                 <RefreshCw className="w-4 h-4" />
-                Fix & resubmit
+                {t("fixAndResubmit")}
               </button>
             )}
             {item.status === "pending" && (
@@ -187,12 +201,12 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                 style={{ backgroundColor: "#344EAD" }}
               >
                 <RefreshCw className="w-4 h-4" />
-                Refresh status
+                {t("refreshStatus")}
               </button>
             )}
             <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
               <MessageSquare className="w-4 h-4" />
-              Contact officer
+              {t("contactOfficer")}
             </button>
           </div>
         </div>
@@ -206,12 +220,12 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
             >
               <AlertOctagon className="w-4 h-4" style={{ color: "#DC2626" }} />
               <p className="text-sm font-semibold" style={{ color: "#DC2626" }}>
-                Why was this rejected?
+                {t("whyRejected")}
               </p>
             </div>
             <div className="p-5">
               <p className="text-sm text-gray-700 leading-relaxed">
-                {item.rejectionReason}
+                {t(item.rejectionReason as "rejectionReasonUnclearId")}
               </p>
 
               {item.fixSteps && item.fixSteps.length > 0 && (
@@ -219,7 +233,7 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                   <div className="flex items-center gap-2 mb-3">
                     <ListChecks className="w-4 h-4" style={{ color: "#344EAD" }} />
                     <p className="text-sm font-semibold text-gray-800">
-                      How to fix it
+                      {t("howToFix")}
                     </p>
                   </div>
                   <ol className="space-y-2.5">
@@ -235,7 +249,7 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                           {i + 1}
                         </span>
                         <p className="text-sm text-gray-700 leading-relaxed pt-0.5">
-                          {s}
+                          {t(s as "fixStepRescan")}
                         </p>
                       </li>
                     ))}
@@ -246,7 +260,7 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                     style={{ backgroundColor: "#DC2626" }}
                   >
                     <Upload className="w-4 h-4" />
-                    Re-upload document
+                    {t("reuploadDocument")}
                   </button>
                 </div>
               )}
@@ -258,14 +272,16 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-5">
             <p className="text-sm font-semibold text-gray-800">
-              Application progress
+              {t("applicationProgress")}
             </p>
             {item.estimatedCompletion && (
               <span
                 className="text-[11px] font-medium px-2.5 py-1 rounded-full"
                 style={{ backgroundColor: "#FEF3C7", color: "#D97706" }}
               >
-                ETA {item.estimatedCompletion}
+                {t("eta", {
+                  value: t(item.estimatedCompletion as "eta23BusinessDays"),
+                })}
               </span>
             )}
           </div>
@@ -330,9 +346,13 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
                           : "#9CA3AF",
                       }}
                     >
-                      {step.label}
+                      {t(step.label as "stepSubmitted")}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">{step.date}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {step.dateKey
+                        ? t(step.dateKey as "dateEstimatedDays")
+                        : step.date}
+                    </p>
                   </div>
                 </li>
               );
@@ -343,25 +363,25 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
         {/* Application info */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <p className="text-sm font-semibold text-gray-800 mb-4">
-            Application info
+            {t("applicationInfo")}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InfoRow
               icon={Hash}
-              label="Reference number"
+              label={t("referenceNumber")}
               value={item.refNo}
             />
             <InfoRow
               icon={Calendar}
-              label="Submitted"
+              label={t("submitted")}
               value={item.submittedAt}
             />
             <InfoRow
               icon={Building2}
-              label="Processing office"
-              value={item.office}
+              label={t("processingOffice")}
+              value={t(item.office as "officeVientianeDistrict")}
             />
-            <InfoRow icon={Coins} label="Service fee" value={item.fee} />
+            <InfoRow icon={Coins} label={t("serviceFee")} value={item.fee} />
           </div>
         </div>
 

@@ -1,0 +1,17 @@
+/* Latin UI font + Lao script font. Per-glyph fallback means Lao characters
+ * automatically render with Noto Sans Lao while Latin stays on the system stack. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-lao: 'Noto Sans Lao', sans-serif;
+}
+
+html {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans Lao', sans-serif;
+}
+
+/* Lao text needs a little extra line height for its stacked diacritics. */
+:lang(lo) {
+  line-height: 1.65;
+}

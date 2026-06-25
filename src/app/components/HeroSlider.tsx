@@ -4,65 +4,24 @@ import slide1 from "../../imports/image-3.png";
 import slide2 from "../../imports/image-4.png";
 import slide3 from "../../imports/image-5.png";
 import type { Lang } from "../App";
+import { useT } from "../i18n";
 
-const SLIDES = {
-  en: [
-    {
-      id: 1,
-      image: slide1,
-      title: "Welcome to Lao Citizen Center",
-      subtitle: "Your one-stop platform for all government services",
-      tag: "Lao Citizen Center",
-    },
-    {
-      id: 2,
-      image: slide2,
-      title: "Celebrating Our Rich Culture",
-      subtitle: "Preserving Lao traditions through digital public services",
-      tag: "Lao Culture",
-    },
-    {
-      id: 3,
-      image: slide3,
-      title: "Serving Every Lao Citizen",
-      subtitle: "Fast, transparent & accessible services for all",
-      tag: "Citizen Services",
-    },
-  ],
-  lo: [
-    {
-      id: 1,
-      image: slide1,
-      title: "ຍິນດີຕ້ອນຮັບສູ່ ສູນພົນລະເມືອງລາວ",
-      subtitle: "ສູນກາງການບໍລິການລັດຖະບານໃນບ່ອນດຽວ",
-      tag: "ສູນພົນລະເມືອງລາວ",
-    },
-    {
-      id: 2,
-      image: slide2,
-      title: "ສະເຫຼີມສະຫຼອງວັດທະນະທຳອັນອຸດົມສົມບູນ",
-      subtitle: "ຮັກສາປະເພນີລາວຜ່ານການບໍລິການສາທາລະນະດິຈິຕອນ",
-      tag: "ວັດທະນະທຳລາວ",
-    },
-    {
-      id: 3,
-      image: slide3,
-      title: "ບໍລິການພົນລະເມືອງລາວທຸກຄົນ",
-      subtitle: "ໄວ, ໂປ່ງໃສ ແລະ ເຂົ້າເຖິງໄດ້ສຳລັບທຸກຄົນ",
-      tag: "ບໍລິການປະຊາຊົນ",
-    },
-  ],
-} as const;
+const SLIDES = [
+  { id: 1, image: slide1, tagKey: "slide1Tag", titleKey: "slide1Title", subtitleKey: "slide1Subtitle" },
+  { id: 2, image: slide2, tagKey: "slide2Tag", titleKey: "slide2Title", subtitleKey: "slide2Subtitle" },
+  { id: 3, image: slide3, tagKey: "slide3Tag", titleKey: "slide3Title", subtitleKey: "slide3Subtitle" },
+] as const;
 
 interface HeroSliderProps {
   greeting: string;
-  name: string;
+  name?: string;
   lang?: Lang;
   children?: React.ReactNode;
 }
 
-export function HeroSlider({ greeting, name, lang = "en", children }: HeroSliderProps) {
-  const slides = SLIDES[lang];
+export function HeroSlider({ greeting, name, children }: HeroSliderProps) {
+  const t = useT("hero");
+  const slides = SLIDES;
   const [current, setCurrent] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -99,7 +58,7 @@ export function HeroSlider({ greeting, name, lang = "en", children }: HeroSlider
         >
           <img
             src={s.image}
-            alt={s.title}
+            alt={t(s.titleKey)}
             className="w-full h-full object-cover"
           />
           {/* Dark gradient overlay */}
@@ -121,20 +80,20 @@ export function HeroSlider({ greeting, name, lang = "en", children }: HeroSlider
             className="inline-block text-xs px-3 py-1 rounded-full mb-3 font-medium border border-white/30"
             style={{ backgroundColor: "rgba(244,163,0,0.25)", color: "#F9D97A" }}
           >
-            {slide.tag}
+            {t(slide.tagKey)}
           </span>
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-white/70 text-sm">{greeting},</p>
-            <p className="text-white text-sm font-semibold">{name}</p>
+            <p className="text-white/70 text-sm">{name ? `${greeting},` : greeting}</p>
+            {name && <p className="text-white text-sm font-semibold">{name}</p>}
           </div>
           <h2
             className="text-white max-w-sm leading-snug"
             style={{ fontSize: "1.25rem" }}
           >
-            {slide.title}
+            {t(slide.titleKey)}
           </h2>
           <p className="text-white/70 text-sm mt-1 max-w-xs leading-relaxed">
-            {slide.subtitle}
+            {t(slide.subtitleKey)}
           </p>
         </div>
 

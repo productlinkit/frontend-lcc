@@ -13,7 +13,7 @@ import { DivorceCertificatePage } from "./components/DivorceCertificatePage";
 import { FamilyBookPage } from "./components/FamilyBookPage";
 import { ServicePage } from "./components/ServicePage";
 
-export type Lang = "en" | "lo";
+export type { Lang } from "./i18n";
 
 // Tabs that require login. Service & Wallet are browsable without login (Wallet
 // shows an empty state); applying for a service or using a wallet action sends
@@ -31,7 +31,6 @@ const PROTECTED_TABS = new Set([
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
-  const [lang, setLang] = useState<Lang>("en");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
 
@@ -69,7 +68,7 @@ export default function App() {
   const renderPage = () => {
     switch (activeTab) {
       case "home":
-        return <HomePage onTabChange={handleTabChange} lang={lang} />;
+        return <HomePage onTabChange={handleTabChange} isAuthenticated={isAuthenticated} />;
       case "service":
         return <ServicePage onTabChange={handleTabChange} />;
       case "resident-certificate":
@@ -94,19 +93,14 @@ export default function App() {
           />
         );
       case "account":
-        return <AccountPage lang={lang} />;
+        return <AccountPage />;
       default:
-        return <HomePage onTabChange={handleTabChange} lang={lang} />;
+        return <HomePage onTabChange={handleTabChange} isAuthenticated={isAuthenticated} />;
     }
   };
 
   return (
-    <Layout
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      lang={lang}
-      onLangChange={setLang}
-    >
+    <Layout activeTab={activeTab} onTabChange={handleTabChange}>
       {renderPage()}
     </Layout>
   );

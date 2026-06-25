@@ -16,6 +16,7 @@ import {
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
 import { LocationFields, DateField } from "./formFields";
 import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
+import { useT, useLang } from "../i18n";
 
 /*
  * Marriage Certificate — follows the PRD §8. Field set is "derived" (per the PRD)
@@ -54,14 +55,14 @@ interface SpouseInfo {
 
 /* ─── Constants ─── */
 const STEPS = [
-  { id: 1, label: "Header", subtitle: "Jurisdiction and document details" },
-  { id: 2, label: "Spouse A", subtitle: "First spouse's particulars" },
-  { id: 3, label: "Spouse B", subtitle: "Second spouse's particulars" },
-  { id: 4, label: "Documents", subtitle: "Supporting documents for the couple" },
-  { id: 5, label: "Registration", subtitle: "Date, place and witnesses" },
-  { id: 6, label: "Review", subtitle: "Check your application" },
-  { id: 7, label: "Payment", subtitle: "Service fee" },
-];
+  { id: 1, titleKey: "step1Title", subtitleKey: "step1Subtitle" },
+  { id: 2, titleKey: "step2Title", subtitleKey: "step2Subtitle" },
+  { id: 3, titleKey: "step3Title", subtitleKey: "step3Subtitle" },
+  { id: 4, titleKey: "step4Title", subtitleKey: "step4Subtitle" },
+  { id: 5, titleKey: "step5Title", subtitleKey: "step5Subtitle" },
+  { id: 6, titleKey: "step6Title", subtitleKey: "step6Subtitle" },
+  { id: 7, titleKey: "step7Title", subtitleKey: "step7Subtitle" },
+] as const;
 
 const GENDERS = ["Female", "Male"];
 const NATIONALITIES = ["Lao", "Thai", "Vietnamese", "Chinese", "Cambodian", "American", "French", "Other"];
@@ -152,6 +153,7 @@ function DocUpload({
   label: React.ReactNode; file: DocFile | null;
   onChange: (f: DocFile | null) => void; required?: boolean; hint?: string;
 }) {
+  const t = useT("marriage");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,8 +187,8 @@ function DocUpload({
             <FileText className="w-5 h-5" style={{ color: "#344EAD" }} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-600">Upload document</p>
-            <p className="text-xs text-gray-400 mt-0.5">{hint ?? "PDF or image"}</p>
+            <p className="text-sm font-semibold text-gray-600">{t("uploadDocument")}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{hint ?? t("pdfOrImage")}</p>
           </div>
         </button>
       )}
@@ -201,59 +203,61 @@ function SpouseSection({
   value: SpouseInfo; onChange: (patch: Partial<SpouseInfo>) => void;
   prevMarried: boolean; onTogglePrevMarried: () => void;
 }) {
+  const t = useT("marriage");
   const isForeign = Boolean(value.nationality && value.nationality !== "Lao");
   return (
     <>
       <InputField
-        label="Full Name (Lao / English)"
+        label={t("fullName")}
         value={value.fullName}
-        placeholder="Spouse's full name"
+        placeholder={t("fullNamePh")}
         onChange={(v) => onChange({ fullName: v })}
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <DateField
-          label="Date of Birth"
+          label={t("dob")}
           value={value.dob}
           onChange={(v) => onChange({ dob: v })}
           required
         />
         <SelectField
-          label="Gender"
+          label={t("gender")}
           value={value.gender}
           options={GENDERS}
-          placeholder="Select..."
+          placeholder={t("selectPh")}
           onChange={(v) => onChange({ gender: v })}
           required
         />
       </div>
       <SelectField
-        label="Nationality"
+        label={t("nationality")}
         value={value.nationality}
         options={NATIONALITIES}
-        placeholder="Select..."
+        placeholder={t("selectPh")}
         onChange={(v) => onChange({ nationality: v })}
         required
       />
       <InputField
-        label="ID Card / Passport No."
+        label={t("idOrPassport")}
         value={value.idOrPassport}
-        placeholder="National ID (Lao) or passport (foreign)"
+        placeholder={t("idOrPassportPh")}
         onChange={(v) => onChange({ idOrPassport: v })}
         required
       />
 
-      <SectionLabel>Current address</SectionLabel>
+      <SectionLabel>{t("currentAddress")}</SectionLabel>
       <InputField
-        label="House No."
+        label={t("houseNo")}
         value={value.addrHouseNo}
-        placeholder="House number"
+        placeholder={t("houseNoPh")}
         onChange={(v) => onChange({ addrHouseNo: v })}
       />
       <LocationFields
         province={value.addrProvince}
         district={value.addrDistrict}
         village={value.addrVillage}
+        villageLabel={t("village")}
         required
         onChange={(p) =>
           onChange({
@@ -264,16 +268,16 @@ function SpouseSection({
         }
       />
       <InputField
-        label="Residence Certificate Ref."
+        label={t("residenceCertRef")}
         value={value.residenceCertRef}
-        placeholder="Reference of this spouse's residence certificate"
+        placeholder={t("residenceCertRefPh")}
         onChange={(v) => onChange({ residenceCertRef: v })}
         required
       />
 
-      <SectionLabel>Documents</SectionLabel>
+      <SectionLabel>{t("documents")}</SectionLabel>
       <DocUpload
-        label="Single-status certificate"
+        label={t("singleStatusCert")}
         file={value.singleStatusCert}
         onChange={(f) => onChange({ singleStatusCert: f })}
         required
@@ -292,8 +296,8 @@ function SpouseSection({
         <div className="flex items-start gap-2.5">
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
           <div>
-            <p className="text-sm font-medium text-gray-800">Previously married</p>
-            <p className="text-xs text-gray-400 mt-0.5">Requires divorce / widowhood proof</p>
+            <p className="text-sm font-medium text-gray-800">{t("prevMarried")}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t("prevMarriedHint")}</p>
           </div>
         </div>
         <div
@@ -308,7 +312,7 @@ function SpouseSection({
       </button>
       {prevMarried && (
         <DocUpload
-          label="Divorce / widowhood proof"
+          label={t("priorMaritalProof")}
           file={value.priorMaritalProof}
           onChange={(f) => onChange({ priorMaritalProof: f })}
           required
@@ -321,48 +325,48 @@ function SpouseSection({
           <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
             <Globe2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
             <p className="text-xs text-amber-700 leading-relaxed">
-              Foreign spouse: documents under Decree 198/PM &amp; Notice 1144 are required; approval involves the MoPS Foreigner Management Department.
+              {t("foreignSpouseNote")}
             </p>
           </div>
           <DocUpload
-            label="Foreign-spouse documents"
+            label={t("foreignDocs")}
             file={value.foreignDocs}
             onChange={(f) => onChange({ foreignDocs: f })}
             required
-            hint="Decree 198/PM & Notice 1144 papers"
+            hint={t("foreignDocsHint")}
           />
         </>
       )}
 
-      <SectionLabel>Additional details (optional)</SectionLabel>
+      <SectionLabel>{t("additionalDetails")}</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnicity"
+          label={t("ethnicity")}
           value={value.ethnicity}
           options={ETHNICITIES}
-          placeholder="Select..."
+          placeholder={t("selectPh")}
           onChange={(v) => onChange({ ethnicity: v })}
         />
         <SelectField
-          label="Religion"
+          label={t("religion")}
           value={value.religion}
           options={RELIGIONS}
-          placeholder="Select..."
+          placeholder={t("selectPh")}
           onChange={(v) => onChange({ religion: v })}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnic Group"
+          label={t("ethnicGroup")}
           value={value.ethnicGroup}
           options={ETHNIC_GROUPS}
-          placeholder="Select..."
+          placeholder={t("selectPh")}
           onChange={(v) => onChange({ ethnicGroup: v })}
         />
         <InputField
-          label="Occupation"
+          label={t("occupation")}
           value={value.occupation}
-          placeholder="Occupation"
+          placeholder={t("occupationPh")}
           onChange={(v) => onChange({ occupation: v })}
         />
       </div>
@@ -409,14 +413,15 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 function StepHeader({ step }: { step: number }) {
+  const t = useT("marriage");
   const meta = STEPS.find((s) => s.id === step)!;
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEPS.length })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(meta.titleKey)}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(meta.subtitleKey)}</p>
     </div>
   );
 }
@@ -427,6 +432,8 @@ interface MarriageCertificatePageProps {
 }
 
 export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps) {
+  const t = useT("marriage");
+  const { lang } = useLang();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -508,17 +515,17 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Application Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Your marriage application has been received. The district registrar will review eligibility before registration.
+              {t("successBody")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Couple", value: [spouseA.fullName, spouseB.fullName].filter(Boolean).join(" & ") || "—" },
-              { label: "Document No.", value: documentNo },
-              { label: "Est. review", value: "≤ 3 working days" },
-              { label: "Status", value: "Submitted", isStatus: true },
+              { label: t("successCouple"), value: [spouseA.fullName, spouseB.fullName].filter(Boolean).join(" & ") || t("dash") },
+              { label: t("successDocumentNo"), value: documentNo },
+              { label: t("successEstReview"), value: t("successEstReviewValue") },
+              { label: t("successStatus"), value: t("successStatusValue"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -537,9 +544,9 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your application in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -558,8 +565,8 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Marriage Certificate</p>
-            <p className="text-xs text-gray-400">Online Application</p>
+            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
+            <p className="text-xs text-gray-400">{t("subtitle")}</p>
           </div>
           <div className="w-9 flex-shrink-0" />
         </div>
@@ -579,11 +586,11 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             <>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Document No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("documentNo")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{documentNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
                 </span>
               </div>
 
@@ -598,7 +605,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Heart className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  The application is certified by the Village Chief, then reviewed and registered at the district office before 3 witnesses.
+                  {t("headerNote")}
                 </p>
               </div>
             </>
@@ -610,7 +617,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Heart className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Details of the first spouse.
+                  {t("spouseAIntro")}
                 </p>
               </div>
               <SpouseSection
@@ -628,7 +635,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Heart className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Details of the second spouse.
+                  {t("spouseBIntro")}
                 </p>
               </div>
               <SpouseSection
@@ -646,21 +653,21 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Shared documents for the couple. Single-status certificates and any foreign-spouse papers are captured per spouse in the previous steps.
+                  {t("docsNote")}
                 </p>
               </div>
               <DocUpload
-                label="Medical certificate (couple)"
+                label={t("medicalCert")}
                 file={medicalCert}
                 onChange={setMedicalCert}
                 required
               />
               <DocUpload
-                label="Minute of engagement"
+                label={t("engagementMinute")}
                 file={engagementMinute}
                 onChange={setEngagementMinute}
                 required
-                hint="Engagement minute supporting the application"
+                hint={t("engagementMinuteHint")}
               />
             </>
           )}
@@ -670,15 +677,15 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             <>
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Date of Marriage"
+                  label={t("dateOfMarriage")}
                   value={reg.dateOfMarriage}
                   onChange={(v) => patchReg({ dateOfMarriage: v })}
                   required
                 />
                 <InputField
-                  label="Place of Registration"
+                  label={t("placeOfRegistration")}
                   value={reg.placeOfRegistration}
-                  placeholder="DoHA office"
+                  placeholder={t("placeOfRegistrationPh")}
                   onChange={(v) => patchReg({ placeOfRegistration: v })}
                   required
                 />
@@ -687,7 +694,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Users className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Three witnesses are required at registration.
+                  {t("witnessesNote")}
                 </p>
               </div>
 
@@ -697,19 +704,19 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
                 { n: 3, name: reg.w3Name, id: reg.w3Id, kn: "w3Name" as const, ki: "w3Id" as const },
               ].map((w) => (
                 <div key={w.n}>
-                  <SectionLabel>Witness {w.n}</SectionLabel>
+                  <SectionLabel>{t("witness", { n: w.n })}</SectionLabel>
                   <div className="grid grid-cols-2 gap-3 mt-1.5">
                     <InputField
-                      label="Name"
+                      label={t("witnessName")}
                       value={w.name}
-                      placeholder="Witness full name"
+                      placeholder={t("witnessNamePh")}
                       onChange={(v) => patchReg({ [w.kn]: v })}
                       required
                     />
                     <InputField
-                      label="ID No."
+                      label={t("witnessId")}
                       value={w.id}
-                      placeholder="ID number"
+                      placeholder={t("witnessIdPh")}
                       onChange={(v) => patchReg({ [w.ki]: v })}
                       required
                     />
@@ -720,7 +727,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-gray-100 border border-gray-200">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-500" />
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  The couple and witnesses sign at registration; the registrar applies a protected e-signature in the back office.
+                  {t("signNote")}
                 </p>
               </div>
             </>
@@ -732,40 +739,40 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Please review before submitting. The registrar reviews eligibility, then registers the marriage before 3 witnesses.
+                  {t("reviewNote")}
                 </p>
               </div>
 
               {[
                 {
-                  title: "Header",
+                  title: t("reviewHeader"),
                   rows: [
-                    ["Province / District / Village", [header.province, header.district, header.village].filter(Boolean).join(" / ") || "—"],
-                    ["Document No.", documentNo],
+                    [t("reviewProvinceDistrictVillage"), [header.province, header.district, header.village].filter(Boolean).join(" / ") || t("dash")],
+                    [t("documentNo"), documentNo],
                   ],
                 },
                 {
-                  title: "Spouse A",
+                  title: t("reviewSpouseA"),
                   rows: [
-                    ["Name", spouseA.fullName || "—"],
-                    ["Nationality", spouseA.nationality || "—"],
-                    ["ID / Passport", spouseA.idOrPassport || "—"],
+                    [t("reviewName"), spouseA.fullName || t("dash")],
+                    [t("reviewNationality"), spouseA.nationality || t("dash")],
+                    [t("reviewIdPassport"), spouseA.idOrPassport || t("dash")],
                   ],
                 },
                 {
-                  title: "Spouse B",
+                  title: t("reviewSpouseB"),
                   rows: [
-                    ["Name", spouseB.fullName || "—"],
-                    ["Nationality", spouseB.nationality || "—"],
-                    ["ID / Passport", spouseB.idOrPassport || "—"],
+                    [t("reviewName"), spouseB.fullName || t("dash")],
+                    [t("reviewNationality"), spouseB.nationality || t("dash")],
+                    [t("reviewIdPassport"), spouseB.idOrPassport || t("dash")],
                   ],
                 },
                 {
-                  title: "Registration",
+                  title: t("reviewRegistration"),
                   rows: [
-                    ["Date of marriage", reg.dateOfMarriage || "—"],
-                    ["Place", reg.placeOfRegistration || "—"],
-                    ["Witnesses", [reg.w1Name, reg.w2Name, reg.w3Name].filter(Boolean).join(", ") || "—"],
+                    [t("reviewDateOfMarriage"), reg.dateOfMarriage || t("dash")],
+                    [t("reviewPlace"), reg.placeOfRegistration || t("dash")],
+                    [t("reviewWitnesses"), [reg.w1Name, reg.w2Name, reg.w3Name].filter(Boolean).join(", ") || t("dash")],
                   ],
                 },
               ].map((card) => (
@@ -786,7 +793,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
           {step === 7 && (
             <PaymentSection
               amount={fee}
-              serviceName="Marriage Certificate"
+              serviceName={t("serviceName")}
               value={payment}
               onChange={(patch) => setPayment((p) => ({ ...p, ...patch }))}
               reference={documentNo}
@@ -810,16 +817,16 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
+                {t("submitting")}
               </>
             ) : step === lastStep ? (
               <>
-                Pay {formatLak(fee)}
+                {t("pay", { amount: formatLak(fee, lang) })}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

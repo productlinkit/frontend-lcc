@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
 import { LocationFields, DateField } from "./formFields";
-import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
+import { SERVICE_CONFIG, getServiceConfig, formatLak } from "../serviceConfig";
+import { useT, useLang } from "../i18n";
 
 /*
  * Divorce Certificate — follows the PRD §9. Field set is "derived" (per the PRD)
@@ -44,17 +45,24 @@ interface SpouseInfo {
 }
 
 /* ─── Constants ─── */
-const STEPS = [
-  { id: 1, label: "Header", subtitle: "Jurisdiction and document details" },
-  { id: 2, label: "Husband", subtitle: "Husband's particulars" },
-  { id: 3, label: "Wife", subtitle: "Wife's particulars" },
-  { id: 4, label: "Divorce & Registration", subtitle: "Basis, date, place and custody" },
-  { id: 5, label: "Review", subtitle: "Check your application" },
-  { id: 6, label: "Payment", subtitle: "Service fee" },
-];
+const STEP_IDS = [1, 2, 3, 4, 5, 6] as const;
+const STEP_COUNT = STEP_IDS.length;
 
+type DivorceT = ReturnType<typeof useT<"divorce">>;
+
+const stepTitleKey = (id: number) => `step${id}Title` as Parameters<DivorceT>[0];
+const stepSubtitleKey = (id: number) => `step${id}Subtitle` as Parameters<DivorceT>[0];
+
+/* Stored values are stable identifiers; labels are resolved via the namespace. */
 const NATIONALITIES = ["Lao", "Thai", "Vietnamese", "Chinese", "Cambodian", "American", "French", "Other"];
+const NATIONALITY_KEY: Record<string, Parameters<DivorceT>[0]> = {
+  Lao: "natLao", Thai: "natThai", Vietnamese: "natVietnamese", Chinese: "natChinese",
+  Cambodian: "natCambodian", American: "natAmerican", French: "natFrench", Other: "natOther",
+};
 const DIVORCE_TYPES = ["Voluntary", "Contested"];
+const DIVORCE_TYPE_KEY: Record<string, Parameters<DivorceT>[0]> = {
+  Voluntary: "typeVoluntary", Contested: "typeContested",
+};
 
 /* ─── Blank record ─── */
 const blankSpouse: SpouseInfo = {
@@ -96,10 +104,11 @@ function InputField({
 }
 
 function SelectField({
-  label, value, options, placeholder, onChange, required,
+  label, value, options, placeholder, onChange, required, optionLabel,
 }: {
   label: React.ReactNode; value: string; options: string[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
+  optionLabel?: (v: string) => string;
 }) {
   return (
     <div>
@@ -111,7 +120,7 @@ function SelectField({
           className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
         >
           <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => <option key={o} value={o}>{optionLabel ? optionLabel(o) : o}</option>)}
         </select>
         <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
           <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,6 +147,7 @@ function DocUpload({
   label: React.ReactNode; file: DocFile | null;
   onChange: (f: DocFile | null) => void; required?: boolean; hint?: string;
 }) {
+  const t = useT("divorce");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,8 +181,8 @@ function DocUpload({
             <FileText className="w-5 h-5" style={{ color: "#344EAD" }} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-600">Upload document</p>
-            <p className="text-xs text-gray-400 mt-0.5">{hint ?? "PDF or image"}</p>
+            <p className="text-sm font-semibold text-gray-600">{t("uploadDocument")}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{hint ?? t("uploadHint")}</p>
           </div>
         </button>
       )}
@@ -186,50 +196,53 @@ function SpouseSection({
 }: {
   value: SpouseInfo; onChange: (patch: Partial<SpouseInfo>) => void;
 }) {
+  const t = useT("divorce");
   return (
     <>
       <InputField
-        label="Full Name (Lao / English)"
+        label={t("fullName")}
         value={value.fullName}
-        placeholder="Spouse's full name"
+        placeholder={t("fullNamePlaceholder")}
         onChange={(v) => onChange({ fullName: v })}
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <DateField
-          label="Date of Birth"
+          label={t("dob")}
           value={value.dob}
           onChange={(v) => onChange({ dob: v })}
           required
         />
         <SelectField
-          label="Nationality"
+          label={t("nationality")}
           value={value.nationality}
           options={NATIONALITIES}
-          placeholder="Select..."
+          placeholder={t("selectPlaceholder")}
+          optionLabel={(o) => t(NATIONALITY_KEY[o] ?? "natOther")}
           onChange={(v) => onChange({ nationality: v })}
           required
         />
       </div>
       <InputField
-        label="ID Card / Passport No."
+        label={t("idOrPassport")}
         value={value.idOrPassport}
-        placeholder="National ID (Lao) or passport (foreign)"
+        placeholder={t("idOrPassportPlaceholder")}
         onChange={(v) => onChange({ idOrPassport: v })}
         required
       />
 
-      <SectionLabel>Current address</SectionLabel>
+      <SectionLabel>{t("currentAddress")}</SectionLabel>
       <InputField
-        label="House No."
+        label={t("houseNo")}
         value={value.addrHouseNo}
-        placeholder="House number"
+        placeholder={t("houseNoPlaceholder")}
         onChange={(v) => onChange({ addrHouseNo: v })}
       />
       <LocationFields
         province={value.addrProvince}
         district={value.addrDistrict}
         village={value.addrVillage}
+        villageLabel={t("villageLabel")}
         required
         onChange={(p) =>
           onChange({
@@ -241,9 +254,9 @@ function SpouseSection({
       />
 
       <InputField
-        label="Existing Marriage Certificate Ref."
+        label={t("marriageCertRef")}
         value={value.marriageCertRef}
-        placeholder="Reference of the marriage being dissolved"
+        placeholder={t("marriageCertRefPlaceholder")}
         onChange={(v) => onChange({ marriageCertRef: v })}
         required
       />
@@ -256,12 +269,12 @@ function StepIndicator({ step }: { step: number }) {
   return (
     <div className="bg-white border-b border-gray-100">
       <div className="max-w-screen-sm mx-auto px-4 py-4 flex items-center">
-        {STEPS.map((s, i) => {
-          const done = step > s.id;
-          const active = step === s.id;
-          const isLast = i === STEPS.length - 1;
+        {STEP_IDS.map((id, i) => {
+          const done = step > id;
+          const active = step === id;
+          const isLast = i === STEP_IDS.length - 1;
           return (
-            <div key={s.id} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
+            <div key={id} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 flex-shrink-0"
                 style={{
@@ -270,14 +283,14 @@ function StepIndicator({ step }: { step: number }) {
                   opacity: done ? 0.55 : 1,
                 }}
               >
-                {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : s.id}
+                {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : id}
               </div>
               {!isLast && (
                 <div
                   className="flex-1 h-0.5 mx-1.5 rounded-full transition-all duration-500"
                   style={{
-                    backgroundColor: step > s.id ? "#344EAD" : "#E5E7EB",
-                    opacity: step > s.id ? 0.4 : 1,
+                    backgroundColor: step > id ? "#344EAD" : "#E5E7EB",
+                    opacity: step > id ? 0.4 : 1,
                   }}
                 />
               )}
@@ -290,14 +303,14 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 function StepHeader({ step }: { step: number }) {
-  const meta = STEPS.find((s) => s.id === step)!;
+  const t = useT("divorce");
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEP_COUNT })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(stepTitleKey(step))}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(stepSubtitleKey(step))}</p>
     </div>
   );
 }
@@ -308,6 +321,9 @@ interface DivorceCertificatePageProps {
 }
 
 export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) {
+  const t = useT("divorce");
+  const { lang } = useLang();
+  const cfg = getServiceConfig("divorce");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -355,7 +371,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
     return true;
   };
 
-  const lastStep = STEPS.length;
+  const lastStep = STEP_COUNT;
 
   const goBack = () => {
     if (step > 1) setStep((s) => s - 1);
@@ -382,18 +398,18 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Application Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Your divorce application has been received. On registration, a certificate is issued to each spouse and marital status is updated.
+              {t("successBody")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Spouses", value: [husband.fullName, wife.fullName].filter(Boolean).join(" & ") || "—" },
-              { label: "Document No.", value: documentNo },
-              { label: "Type", value: basis.divorceType || "—" },
-              { label: "Est. review", value: "≤ 3 working days" },
-              { label: "Status", value: "Submitted", isStatus: true },
+              { label: t("successSpouses"), value: [husband.fullName, wife.fullName].filter(Boolean).join(" & ") || t("empty") },
+              { label: t("successDocumentNo"), value: documentNo },
+              { label: t("successType"), value: basis.divorceType ? t(DIVORCE_TYPE_KEY[basis.divorceType] ?? "empty") : t("empty") },
+              { label: t("successEstReview"), value: cfg.processingTime[lang] },
+              { label: t("successStatus"), value: t("statusSubmitted"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -412,9 +428,9 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your application in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -433,8 +449,8 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Divorce Certificate</p>
-            <p className="text-xs text-gray-400">Online Application</p>
+            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
+            <p className="text-xs text-gray-400">{t("subtitle")}</p>
           </div>
           <div className="w-9 flex-shrink-0" />
         </div>
@@ -454,11 +470,11 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             <>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Document No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("documentNo")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{documentNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
                 </span>
               </div>
 
@@ -466,6 +482,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
                 province={header.province}
                 district={header.district}
                 village={header.village}
+                villageLabel={t("villageLabel")}
                 required
                 onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
@@ -473,7 +490,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <HeartCrack className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  A voluntary divorce uses a village minute; a contested divorce requires a final People's Court decision. The district registrar registers either route.
+                  {t("jurisdictionNote")}
                 </p>
               </div>
             </>
@@ -485,7 +502,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <User className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Details of the husband.
+                  {t("husbandIntro")}
                 </p>
               </div>
               <SpouseSection value={husband} onChange={patchHusband} />
@@ -498,7 +515,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <User className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Details of the wife.
+                  {t("wifeIntro")}
                 </p>
               </div>
               <SpouseSection value={wife} onChange={patchWife} />
@@ -509,60 +526,61 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
           {step === 4 && (
             <>
               <SelectField
-                label="Divorce Type"
+                label={t("divorceType")}
                 value={basis.divorceType}
                 options={DIVORCE_TYPES}
-                placeholder="Select..."
+                placeholder={t("selectPlaceholder")}
+                optionLabel={(o) => t(DIVORCE_TYPE_KEY[o] ?? "empty")}
                 onChange={(v) => patchBasis({ divorceType: v })}
                 required
               />
 
               {basis.divorceType === "Voluntary" && (
                 <DocUpload
-                  label="Minute of divorce (Village Chief)"
+                  label={t("minuteLabel")}
                   file={minuteOfDivorce}
                   onChange={setMinuteOfDivorce}
                   required
-                  hint="Village minute for a voluntary divorce"
+                  hint={t("minuteHint")}
                 />
               )}
               {basis.divorceType === "Contested" && (
                 <DocUpload
-                  label="Court decision"
+                  label={t("courtDecisionLabel")}
                   file={courtDecision}
                   onChange={setCourtDecision}
                   required
-                  hint="Final People's Court decision"
+                  hint={t("courtDecisionHint")}
                 />
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Date of Divorce"
+                  label={t("dateOfDivorce")}
                   value={basis.dateOfDivorce}
                   onChange={(v) => patchBasis({ dateOfDivorce: v })}
                   required
                 />
                 <InputField
-                  label="Place of Registration"
+                  label={t("placeOfRegistration")}
                   value={basis.placeOfRegistration}
-                  placeholder="DoHA office"
+                  placeholder={t("placeOfRegistrationPlaceholder")}
                   onChange={(v) => patchBasis({ placeOfRegistration: v })}
                   required
                 />
               </div>
 
               <InputField
-                label="Children / custody reference (optional)"
+                label={t("custodyRef")}
                 value={basis.custodyRef}
-                placeholder="Custody or dependent arrangements"
+                placeholder={t("custodyRefPlaceholder")}
                 onChange={(v) => patchBasis({ custodyRef: v })}
               />
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-gray-100 border border-gray-200">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-500" />
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  On registration, a separate divorce certificate is issued to each spouse; the registrar applies a protected e-signature in the back office.
+                  {t("registrationNote")}
                 </p>
               </div>
             </>
@@ -574,41 +592,41 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Please review before submitting. The Head of DoHA approves registration; for a contested divorce the People's Court decision applies.
+                  {t("reviewNote")}
                 </p>
               </div>
 
               {[
                 {
-                  title: "Header",
+                  title: t("reviewHeader"),
                   rows: [
-                    ["Province / District / Village", [header.province, header.district, header.village].filter(Boolean).join(" / ") || "—"],
-                    ["Document No.", documentNo],
+                    [t("reviewProvinceDistrictVillage"), [header.province, header.district, header.village].filter(Boolean).join(" / ") || t("empty")],
+                    [t("documentNo"), documentNo],
                   ],
                 },
                 {
-                  title: "Husband",
+                  title: t("reviewHusband"),
                   rows: [
-                    ["Name", husband.fullName || "—"],
-                    ["ID / Passport", husband.idOrPassport || "—"],
-                    ["Marriage Ref.", husband.marriageCertRef || "—"],
+                    [t("reviewName"), husband.fullName || t("empty")],
+                    [t("reviewIdPassport"), husband.idOrPassport || t("empty")],
+                    [t("reviewMarriageRef"), husband.marriageCertRef || t("empty")],
                   ],
                 },
                 {
-                  title: "Wife",
+                  title: t("reviewWife"),
                   rows: [
-                    ["Name", wife.fullName || "—"],
-                    ["ID / Passport", wife.idOrPassport || "—"],
-                    ["Marriage Ref.", wife.marriageCertRef || "—"],
+                    [t("reviewName"), wife.fullName || t("empty")],
+                    [t("reviewIdPassport"), wife.idOrPassport || t("empty")],
+                    [t("reviewMarriageRef"), wife.marriageCertRef || t("empty")],
                   ],
                 },
                 {
-                  title: "Divorce & Registration",
+                  title: t("reviewDivorce"),
                   rows: [
-                    ["Type", basis.divorceType || "—"],
-                    ["Date of divorce", basis.dateOfDivorce || "—"],
-                    ["Place", basis.placeOfRegistration || "—"],
-                    ["Custody", basis.custodyRef || "—"],
+                    [t("reviewType"), basis.divorceType ? t(DIVORCE_TYPE_KEY[basis.divorceType] ?? "empty") : t("empty")],
+                    [t("reviewDate"), basis.dateOfDivorce || t("empty")],
+                    [t("reviewPlace"), basis.placeOfRegistration || t("empty")],
+                    [t("reviewCustody"), basis.custodyRef || t("empty")],
                   ],
                 },
               ].map((card) => (
@@ -629,7 +647,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
           {step === 6 && (
             <PaymentSection
               amount={fee}
-              serviceName="Divorce Certificate"
+              serviceName={t("serviceName")}
               value={payment}
               onChange={(patch) => setPayment((p) => ({ ...p, ...patch }))}
               reference={documentNo}
@@ -653,16 +671,16 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
+                {t("submitting")}
               </>
             ) : step === lastStep ? (
               <>
-                Pay {formatLak(fee)}
+                {t("pay", { amount: formatLak(fee, lang) })}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

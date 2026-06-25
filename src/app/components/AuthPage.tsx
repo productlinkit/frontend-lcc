@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import logoLcc from "../../imports/logo-lcc.png";
+import { useT } from "../i18n";
 
 const BG_IMAGE =
   "https://images.unsplash.com/photo-1723622689088-3b00cce5d5ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxWaWVudGlhbmUlMjBMYW9zJTIwY2l0eXNjYXBlJTIwdGVtcGxlfGVufDF8fHx8MTc4MDkxODgwNnww&ixlib=rb-4.1.0&q=80&w=1080";
@@ -55,6 +56,7 @@ function FieldError({ msg }: { msg?: string }) {
 
 /* ── Left panel with background image ── */
 function LeftPanel() {
+  const t = useT("auth");
   return (
     <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center overflow-hidden">
       <img
@@ -76,17 +78,16 @@ function LeftPanel() {
           className="w-28 h-28 object-contain mb-6 drop-shadow-2xl rounded-2xl"
         />
         <h1 className="text-white mb-3" style={{ fontSize: "26px" }}>
-          Lao Citizen Center
+          {t("brand")}
         </h1>
         <p className="text-white/65 text-sm leading-relaxed max-w-xs">
-          ສູນບໍລິການດ້ານຂໍ້ມູນຂ່າວສານ ແລະ ການດຳລົງຊີວິດ
-          <br />ຂອງພົນລະເມືອງລາວ
+          {t("brandTagline")}
         </p>
         <div className="mt-8 flex flex-col gap-3 w-full max-w-xs">
           {[
-            "ຮ້ອງຂໍເອກະສານລັດຖະການ",
-            "ຊຳລະຄ່າທຳນຽມ ແລະ ຄ່າໄຟ",
-            "ຕິດຕາມສະຖານະຄຳຮ້ອງ",
+            t("featureRequestDocs"),
+            t("featurePayFees"),
+            t("featureTrackStatus"),
           ].map((feat) => (
             <div key={feat} className="flex items-center gap-3 text-left">
               <CheckCircle className="w-4 h-4 text-white/70 flex-shrink-0" />
@@ -96,13 +97,14 @@ function LeftPanel() {
         </div>
       </div>
       <p className="absolute bottom-6 text-white/35 text-xs">
-        Ministry of Interior · Lao PDR
+        {t("ministry")}
       </p>
     </div>
   );
 }
 
 export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
+  const t = useT("auth");
   const [mode, setMode] = useState<AuthMode>("login");
   const [step, setStep] = useState<AuthStep>("tabs");
 
@@ -149,12 +151,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
   function validateLogin() {
     const errs: Record<string, string> = {};
-    if (!loginId.trim()) errs.loginId = "Phone number or email is required";
-    if (!loginPass) errs.loginPass = "Password is required";
+    if (!loginId.trim()) errs.loginId = t("errLoginIdRequired");
+    if (!loginPass) errs.loginPass = t("errPasswordRequired");
     if (!mathInput.trim()) {
-      errs.math = "Please answer the security question";
+      errs.math = t("errSecurityRequired");
     } else if (parseInt(mathInput) !== math.answer) {
-      errs.math = "Incorrect answer, please try again";
+      errs.math = t("errSecurityIncorrect");
       setMath(generateMath());
       setMathInput("");
     }
@@ -163,17 +165,17 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
   function validateRegister() {
     const errs: Record<string, string> = {};
-    if (!fullName.trim()) errs.fullName = "Full name is required";
-    if (!phone.trim()) errs.phone = "Phone number is required";
+    if (!fullName.trim()) errs.fullName = t("errFullNameRequired");
+    if (!phone.trim()) errs.phone = t("errPhoneRequired");
     else if (!/^\+?\d{7,15}$/.test(phone.replace(/\s/g, "")))
-      errs.phone = "Enter a valid phone number";
+      errs.phone = t("errPhoneInvalid");
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      errs.email = "Enter a valid email address";
-    if (!password) errs.password = "Password is required";
-    else if (password.length < 8) errs.password = "At least 8 characters";
-    if (!confirmPassword) errs.confirmPassword = "Please confirm your password";
-    else if (password !== confirmPassword) errs.confirmPassword = "Passwords do not match";
-    if (!agreed) errs.agreed = "You must agree to continue";
+      errs.email = t("errEmailInvalid");
+    if (!password) errs.password = t("errPasswordRequired");
+    else if (password.length < 8) errs.password = t("errPasswordMin");
+    if (!confirmPassword) errs.confirmPassword = t("errConfirmRequired");
+    else if (password !== confirmPassword) errs.confirmPassword = t("errPasswordMismatch");
+    if (!agreed) errs.agreed = t("errMustAgree");
     return errs;
   }
 
@@ -212,7 +214,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
   }
 
   function handleOtpVerify() {
-    if (otp.join("").length < 6) { setOtpError("Please enter all 6 digits"); return; }
+    if (otp.join("").length < 6) { setOtpError(t("errOtpIncomplete")); return; }
     onSuccess();
   }
 
@@ -228,7 +230,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
               className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Back</span>
+              <span className="text-sm">{t("back")}</span>
             </button>
           </div>
           <div className="flex-1 flex items-center justify-center px-6 py-8">
@@ -243,9 +245,9 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 >
                   <Phone className="w-7 h-7" style={{ color: "#344EAD" }} />
                 </div>
-                <h2 className="text-gray-800 mb-2" style={{ fontSize: "22px" }}>OTP Verification</h2>
+                <h2 className="text-gray-800 mb-2" style={{ fontSize: "22px" }}>{t("otpVerification")}</h2>
                 <p className="text-gray-500 text-sm">
-                  We sent a 6-digit code to<br />
+                  {t("otpSentTo")}<br />
                   <span className="font-semibold text-gray-700">{maskedContact}</span>
                 </p>
               </div>
@@ -278,12 +280,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                   className="w-full py-3.5 rounded-xl text-white text-sm font-semibold mt-5 transition-opacity hover:opacity-90"
                   style={{ backgroundColor: "#344EAD" }}
                 >
-                  Verify Code
+                  {t("verifyCode")}
                 </button>
                 <div className="mt-5 text-center">
                   {countdown > 0 ? (
                     <p className="text-gray-400 text-sm">
-                      Resend in <span className="font-semibold text-gray-600">{countdown}s</span>
+                      {t("resendIn", { seconds: countdown })}
                     </p>
                   ) : (
                     <button
@@ -292,7 +294,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       style={{ color: "#344EAD" }}
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      Resend OTP
+                      {t("resendOtp")}
                     </button>
                   )}
                 </div>
@@ -317,7 +319,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
             className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to Home</span>
+            <span className="text-sm">{t("backToHome")}</span>
           </button>
         </div>
 
@@ -330,12 +332,10 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
             <div className="mb-5">
               <h2 className="text-gray-800" style={{ fontSize: "22px" }}>
-                {mode === "login" ? "Welcome Back" : "Create Account"}
+                {mode === "login" ? t("welcomeBack") : t("createAccount")}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                {mode === "login"
-                  ? "Sign in to access your citizen services"
-                  : "Join Lao Citizen Center today"}
+                {mode === "login" ? t("welcomeBackSub") : t("createAccountSub")}
               </p>
             </div>
 
@@ -350,7 +350,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       mode === m ? "text-[#344EAD]" : "text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    {m === "login" ? "Login" : "Register"}
+                    {m === "login" ? t("login") : t("register")}
                     {mode === m && (
                       <span
                         className="absolute bottom-0 left-6 right-6 h-0.5 rounded-full"
@@ -368,7 +368,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     {/* Phone / Email */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Phone Number or Email
+                        {t("loginIdLabel")}
                       </label>
                       <div className="relative">
                         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -378,7 +378,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         </div>
                         <input
                           type="text"
-                          placeholder="+856 20 XXXX XXXX or email@..."
+                          placeholder={t("loginIdPlaceholder")}
                           value={loginId}
                           onChange={(e) => { setLoginId(e.target.value); setLoginErrors(x => ({ ...x, loginId: "" })); }}
                           className={`${inputBase} pl-10 ${loginErrors.loginId ? errClass : normalClass}`}
@@ -390,16 +390,16 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     {/* Password */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-medium text-gray-600">Password</label>
+                        <label className="text-xs font-medium text-gray-600">{t("passwordLabel")}</label>
                         <button type="button" className="text-xs font-medium" style={{ color: "#344EAD" }}>
-                          Forgot password?
+                          {t("forgotPassword")}
                         </button>
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type={showLoginPass ? "text" : "password"}
-                          placeholder="Enter your password"
+                          placeholder={t("passwordPlaceholder")}
                           value={loginPass}
                           onChange={(e) => { setLoginPass(e.target.value); setLoginErrors(x => ({ ...x, loginPass: "" })); }}
                           className={`${inputBase} pl-10 pr-10 ${loginErrors.loginPass ? errClass : normalClass}`}
@@ -418,7 +418,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     {/* Security Check */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Security Check
+                        {t("securityCheckLabel")}
                       </label>
                       <div
                         className="flex items-center gap-2 p-2.5 rounded-xl border"
@@ -437,7 +437,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         <input
                           type="text"
                           inputMode="numeric"
-                          placeholder="Answer"
+                          placeholder={t("answerPlaceholder")}
                           maxLength={2}
                           value={mathInput}
                           onChange={(e) => { setMathInput(e.target.value.replace(/\D/g, "")); setLoginErrors(x => ({ ...x, math: "" })); }}
@@ -448,7 +448,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           type="button"
                           onClick={() => { setMath(generateMath()); setMathInput(""); }}
                           className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-100 transition-colors flex-shrink-0"
-                          title="New question"
+                          title={t("newQuestion")}
                         >
                           <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
                         </button>
@@ -462,14 +462,14 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       className="w-full py-3.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                       style={{ backgroundColor: "#344EAD" }}
                     >
-                      Sign In
+                      {t("signIn")}
                       <ChevronRight className="w-4 h-4" />
                     </button>
 
                     {/* Divider */}
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-px bg-gray-100" />
-                      <span className="text-gray-400 text-xs">or continue with</span>
+                      <span className="text-gray-400 text-xs">{t("orContinueWith")}</span>
                       <div className="flex-1 h-px bg-gray-100" />
                     </div>
 
@@ -479,18 +479,18 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 shadow-sm"
                     >
                       <GoogleIcon />
-                      Continue with Google
+                      {t("continueWithGoogle")}
                     </button>
 
                     <p className="text-center text-xs text-gray-400">
-                      Don't have an account?{" "}
+                      {t("noAccount")}{" "}
                       <button
                         type="button"
                         className="text-xs font-semibold"
                         style={{ color: "#344EAD" }}
                         onClick={() => { setMode("register"); setLoginErrors({}); }}
                       >
-                        Register
+                        {t("register")}
                       </button>
                     </p>
                   </form>
@@ -501,12 +501,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                   <form onSubmit={handleRegisterSubmit} className="space-y-4">
                     {/* Full Name */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Full Name</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{t("fullNameLabel")}</label>
                       <div className="relative">
                         <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type="text"
-                          placeholder="As on your ID card"
+                          placeholder={t("fullNamePlaceholder")}
                           value={fullName}
                           onChange={(e) => { setFullName(e.target.value); setRegErrors(x => ({ ...x, fullName: "" })); }}
                           className={`${inputBase} pl-10 ${regErrors.fullName ? errClass : normalClass}`}
@@ -517,12 +517,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
                     {/* Phone */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Phone Number</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{t("phoneLabel")}</label>
                       <div className="relative">
                         <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type="tel"
-                          placeholder="+856 20 XXXX XXXX"
+                          placeholder={t("phonePlaceholder")}
                           value={phone}
                           onChange={(e) => { setPhone(e.target.value); setRegErrors(x => ({ ...x, phone: "" })); }}
                           className={`${inputBase} pl-10 ${regErrors.phone ? errClass : normalClass}`}
@@ -534,14 +534,14 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     {/* Email optional */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Email Address
-                        <span className="ml-1.5 text-gray-400 font-normal">(optional)</span>
+                        {t("emailLabel")}
+                        <span className="ml-1.5 text-gray-400 font-normal">{t("optional")}</span>
                       </label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder={t("emailPlaceholder")}
                           value={email}
                           onChange={(e) => { setEmail(e.target.value); setRegErrors(x => ({ ...x, email: "" })); }}
                           className={`${inputBase} pl-10 ${regErrors.email ? errClass : normalClass}`}
@@ -552,12 +552,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
                     {/* Password */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Password</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{t("passwordLabel")}</label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type={showPass ? "text" : "password"}
-                          placeholder="Min. 8 characters"
+                          placeholder={t("registerPasswordPlaceholder")}
                           value={password}
                           onChange={(e) => { setPassword(e.target.value); setRegErrors(x => ({ ...x, password: "", confirmPassword: "" })); }}
                           className={`${inputBase} pl-10 pr-10 ${regErrors.password ? errClass : normalClass}`}
@@ -589,12 +589,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
 
                     {/* Confirm Password */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Confirm Password</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{t("confirmPasswordLabel")}</label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         <input
                           type={showConfirmPass ? "text" : "password"}
-                          placeholder="Re-enter your password"
+                          placeholder={t("confirmPasswordPlaceholder")}
                           value={confirmPassword}
                           onChange={(e) => { setConfirmPassword(e.target.value); setRegErrors(x => ({ ...x, confirmPassword: "" })); }}
                           className={`${inputBase} pl-10 pr-16 ${regErrors.confirmPassword ? errClass : normalClass}`}
@@ -638,11 +638,11 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           </div>
                         </div>
                         <span className={`text-xs leading-relaxed ${regErrors.agreed ? "text-red-500" : "text-gray-500"}`}>
-                          I agree to the{" "}
-                          <button type="button" className="text-xs font-semibold underline" style={{ color: "#344EAD" }}>Terms of Service</button>
-                          {" "}and{" "}
-                          <button type="button" className="text-xs font-semibold underline" style={{ color: "#344EAD" }}>Privacy Policy</button>
-                          {" "}of Lao Citizen Center
+                          {t("agreePrefix")}{" "}
+                          <button type="button" className="text-xs font-semibold underline" style={{ color: "#344EAD" }}>{t("termsOfService")}</button>
+                          {" "}{t("and")}{" "}
+                          <button type="button" className="text-xs font-semibold underline" style={{ color: "#344EAD" }}>{t("privacyPolicy")}</button>
+                          {" "}{t("agreeSuffix")}
                         </span>
                       </label>
                       <FieldError msg={regErrors.agreed} />
@@ -654,19 +654,19 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       className="w-full py-3.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                       style={{ backgroundColor: "#344EAD" }}
                     >
-                      Create Account
+                      {t("createAccount")}
                       <ChevronRight className="w-4 h-4" />
                     </button>
 
                     <p className="text-center text-xs text-gray-400">
-                      Already have an account?{" "}
+                      {t("haveAccount")}{" "}
                       <button
                         type="button"
                         className="text-xs font-semibold"
                         style={{ color: "#344EAD" }}
                         onClick={() => { setMode("login"); setRegErrors({}); }}
                       >
-                        Sign in
+                        {t("signIn")}
                       </button>
                     </p>
                   </form>
@@ -675,7 +675,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
             </div>
 
             <p className="text-center text-gray-400 text-xs mt-5 pb-6">
-              Ministry of Interior · Lao PDR
+              {t("ministry")}
             </p>
           </div>
         </div>

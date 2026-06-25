@@ -10,6 +10,7 @@ import {
   Hash,
   User,
 } from "lucide-react";
+import { useT } from "../i18n";
 
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1600896997793-b8ed3459a17f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzb3V0aGVhc3QlMjBhc2lhbiUyMHByb2Zlc3Npb25hbCUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc3NjY3MDIyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
@@ -56,6 +57,7 @@ function QRCodePlaceholder() {
 
 export function YourIdPage() {
   const [isFlipped, setIsFlipped] = useState(false);
+  const t = useT("yourId");
 
   return (
     <div className="min-h-full">
@@ -75,10 +77,10 @@ export function YourIdPage() {
           }}
         />
         <div className="relative z-10">
-          <p className="text-white/70 text-sm mb-1">Digital Identity</p>
-          <h1 className="text-2xl text-white">Your ID</h1>
+          <p className="text-white/70 text-sm mb-1">{t("headerEyebrow")}</p>
+          <h1 className="text-2xl text-white">{t("headerTitle")}</h1>
           <p className="text-white/60 text-xs mt-1">
-            Lao People's Democratic Republic
+            {t("country")}
           </p>
         </div>
       </div>
@@ -123,7 +125,7 @@ export function YourIdPage() {
                   <div className="mt-2 flex justify-center">
                     <div className="flex items-center gap-1 bg-green-500/20 border border-green-400/30 rounded-full px-2 py-0.5">
                       <CheckCircle className="w-3 h-3 text-green-400" />
-                      <span className="text-green-300 text-xs">Verified</span>
+                      <span className="text-green-300 text-xs">{t("verified")}</span>
                     </div>
                   </div>
                 </div>
@@ -135,9 +137,9 @@ export function YourIdPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🇱🇦</span>
                       <div>
-                        <p className="text-white/60 text-xs">Lao PDR</p>
+                        <p className="text-white/60 text-xs">{t("countryShort")}</p>
                         <p className="text-white text-xs font-medium">
-                          National ID Card
+                          {t("cardType")}
                         </p>
                       </div>
                     </div>
@@ -152,21 +154,21 @@ export function YourIdPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <Hash className="w-3 h-3 text-white/40" />
-                      <span className="text-white/60 text-xs">ID Number:</span>
+                      <span className="text-white/60 text-xs">{t("idNumber")}</span>
                       <span className="text-white text-xs font-mono">
                         LA-2580-1234-5678
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3 h-3 text-white/40" />
-                      <span className="text-white/60 text-xs">DOB:</span>
+                      <span className="text-white/60 text-xs">{t("dob")}</span>
                       <span className="text-white text-xs">
                         15 March 1985
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-3 h-3 text-white/40" />
-                      <span className="text-white/60 text-xs">Province:</span>
+                      <span className="text-white/60 text-xs">{t("province")}</span>
                       <span className="text-white text-xs">
                         Vientiane Capital
                       </span>
@@ -175,12 +177,12 @@ export function YourIdPage() {
 
                   <div className="mt-3 flex items-center justify-between">
                     <div>
-                      <p className="text-white/40 text-xs">Valid until</p>
+                      <p className="text-white/40 text-xs">{t("validUntil")}</p>
                       <p className="text-white/80 text-xs font-medium">
                         31 Dec 2031
                       </p>
                     </div>
-                    <p className="text-white/30 text-xs">Tap to flip</p>
+                    <p className="text-white/30 text-xs">{t("tapToFlip")}</p>
                   </div>
                 </div>
               </div>
@@ -206,14 +208,14 @@ export function YourIdPage() {
 
               <div className="relative z-10 flex gap-6 items-center h-full">
                 <div className="flex-1">
-                  <p className="text-white/60 text-xs mb-2">Scan to verify</p>
+                  <p className="text-white/60 text-xs mb-2">{t("scanToVerify")}</p>
                   <p className="text-white text-sm font-medium mb-3">
-                    Digital Verification QR
+                    {t("digitalVerificationQR")}
                   </p>
                   <div className="text-white/50 text-xs space-y-1">
-                    <p>Issued by: Ministry of Interior</p>
-                    <p>Issue date: 01 Jan 2022</p>
-                    <p>Chip: LA258012345678</p>
+                    <p>{t("issuedBy")}</p>
+                    <p>{t("issueDate")}</p>
+                    <p>{t("chip")}</p>
                   </div>
                 </div>
                 <div className="w-28 h-28 bg-white rounded-2xl p-2 shadow-xl flex-shrink-0">
@@ -235,9 +237,9 @@ export function YourIdPage() {
         {/* Actions */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: Download, label: "Download" },
-            { icon: Share2, label: "Share" },
-            { icon: RefreshCw, label: "Renew" },
+            { icon: Download, label: t("actionDownload") },
+            { icon: Share2, label: t("actionShare") },
+            { icon: RefreshCw, label: t("actionRenew") },
           ].map((action) => {
             const Icon = action.icon;
             return (
@@ -263,19 +265,19 @@ export function YourIdPage() {
             className="px-5 py-4 border-b border-gray-100 flex items-center gap-2"
           >
             <User className="w-4 h-4" style={{ color: "#344EAD" }} />
-            <h3 className="text-gray-800 text-sm">Personal Information</h3>
+            <h3 className="text-gray-800 text-sm">{t("personalInformation")}</h3>
           </div>
 
           {[
-            { label: "Full Name", value: "Somchai Phommasack" },
-            { label: "Gender", value: "Male" },
-            { label: "Date of Birth", value: "15 March 1985" },
-            { label: "Nationality", value: "Lao PDR" },
-            { label: "Ethnicity", value: "Lao Loum" },
-            { label: "Religion", value: "Buddhism" },
-            { label: "Province", value: "Vientiane Capital" },
-            { label: "District", value: "Sikhottabong" },
-            { label: "Village", value: "Nongtha" },
+            { label: t("fullName"), value: "Somchai Phommasack" },
+            { label: t("gender"), value: t("genderValue") },
+            { label: t("dateOfBirth"), value: "15 March 1985" },
+            { label: t("nationality"), value: t("nationalityValue") },
+            { label: t("ethnicity"), value: t("ethnicityValue") },
+            { label: t("religion"), value: t("religionValue") },
+            { label: t("provinceLabel"), value: t("provinceValue") },
+            { label: t("district"), value: t("districtValue") },
+            { label: t("village"), value: t("villageValue") },
           ].map((item, i, arr) => (
             <div
               key={item.label}
@@ -307,10 +309,10 @@ export function YourIdPage() {
               className="text-sm font-medium"
               style={{ color: "#344EAD" }}
             >
-              ID Status: Active & Verified
+              {t("statusTitle")}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Your identity has been verified by the Ministry of Interior
+              {t("statusNote")}
             </p>
           </div>
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />

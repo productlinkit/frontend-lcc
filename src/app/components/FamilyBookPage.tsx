@@ -12,6 +12,8 @@ import {
   Hash,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import { useT, useLang } from "../i18n";
+import { formatLak } from "../serviceConfig";
 
 /*
  * Family Book (Household Registration) — follows the PRD §10.
@@ -32,19 +34,44 @@ interface Member {
 }
 
 /* ─── Constants ─── */
+/* Step ids are stable; labels/subtitles are translated at render time. */
 const STEPS = [
-  { id: 1, label: "Household", subtitle: "Cover and household head" },
-  { id: 2, label: "Members", subtitle: "People registered in the household" },
-  { id: 3, label: "Review", subtitle: "Check and submit the record" },
-];
+  { id: 1, labelKey: "step1Label", subKey: "step1Subtitle" },
+  { id: 2, labelKey: "step2Label", subKey: "step2Subtitle" },
+  { id: 3, labelKey: "step3Label", subKey: "step3Subtitle" },
+] as const;
 
-const GENDERS = ["Female", "Male"];
-const NATIONALITIES = ["Lao", "Thai", "Vietnamese", "Chinese", "Cambodian", "Other"];
-const ETHNICITIES = ["Lao", "Khmu", "Hmong", "Phouthai", "Tai", "Other"];
+/* `value` is the stable identifier used in logic; `key` maps to the translated label. */
+const GENDERS = [
+  { value: "Female", key: "genderFemale" },
+  { value: "Male", key: "genderMale" },
+] as const;
+const NATIONALITIES = [
+  { value: "Lao", key: "natLao" },
+  { value: "Thai", key: "natThai" },
+  { value: "Vietnamese", key: "natVietnamese" },
+  { value: "Chinese", key: "natChinese" },
+  { value: "Cambodian", key: "natCambodian" },
+  { value: "Other", key: "natOther" },
+] as const;
+const ETHNICITIES = [
+  { value: "Lao", key: "ethLao" },
+  { value: "Khmu", key: "ethKhmu" },
+  { value: "Hmong", key: "ethHmong" },
+  { value: "Phouthai", key: "ethPhouthai" },
+  { value: "Tai", key: "ethTai" },
+  { value: "Other", key: "ethOther" },
+] as const;
 const RELATIONSHIPS = [
-  "Household Head", "Spouse", "Child", "Parent",
-  "Sibling", "Grandparent", "Grandchild", "Other",
-];
+  { value: "Household Head", key: "relHead" },
+  { value: "Spouse", key: "relSpouse" },
+  { value: "Child", key: "relChild" },
+  { value: "Parent", key: "relParent" },
+  { value: "Sibling", key: "relSibling" },
+  { value: "Grandparent", key: "relGrandparent" },
+  { value: "Grandchild", key: "relGrandchild" },
+  { value: "Other", key: "relOther" },
+] as const;
 
 const blankMember: Member = {
   name: "", gender: "", dob: "", relationship: "", ethnicity: "", nationality: "Lao",
@@ -85,7 +112,8 @@ function InputField({
 function SelectField({
   label, value, options, placeholder, onChange, required,
 }: {
-  label: React.ReactNode; value: string; options: string[];
+  label: React.ReactNode; value: string;
+  options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
   return (
@@ -98,7 +126,7 @@ function SelectField({
           className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
         >
           <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
           <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,14 +185,15 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 function StepHeader({ step }: { step: number }) {
+  const t = useT("familyBook");
   const meta = STEPS.find((s) => s.id === step)!;
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEPS.length })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(meta.labelKey)}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(meta.subKey)}</p>
     </div>
   );
 }
@@ -175,6 +204,8 @@ interface FamilyBookPageProps {
 }
 
 export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
+  const t = useT("familyBook");
+  const { lang } = useLang();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -207,6 +238,15 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
   const total = members.length;
   const men = members.filter((m) => m.gender === "Male").length;
   const women = members.filter((m) => m.gender === "Female").length;
+
+  // Translate a stable option value to its display label (for read-only review rows).
+  const labelOf = (
+    list: readonly { value: string; key: string }[],
+    value: string,
+  ) => {
+    const found = list.find((o) => o.value === value);
+    return found ? t(found.key as Parameters<typeof t>[0]) : value;
+  };
 
   const memberValid = (m: Member) =>
     Boolean(m.name.trim() && m.gender && m.dob.trim() && m.relationship && m.nationality);
@@ -250,17 +290,17 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Household Record Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              The family book record has been received. A UIN is assigned to each member and the record is maintained by DoPS.
+              {t("successBody")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Household head", value: head.holderFullName || head.holderName || "—" },
-              { label: "Family Book No.", value: familyBookNo },
-              { label: "Members", value: `${total} (${men}M / ${women}F)` },
-              { label: "Status", value: "Submitted", isStatus: true },
+              { label: t("successHead"), value: head.holderFullName || head.holderName || "—" },
+              { label: t("familyBookNo"), value: familyBookNo },
+              { label: t("successMembers"), value: t("peopleSummary", { total, men, women }) },
+              { label: t("statusLabel"), value: t("statusSubmitted"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -279,9 +319,9 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your record in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -300,8 +340,8 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Family Book</p>
-            <p className="text-xs text-gray-400">Household Registration</p>
+            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
+            <p className="text-xs text-gray-400">{t("subtitle")}</p>
           </div>
           <div className="w-9 flex-shrink-0" />
         </div>
@@ -321,64 +361,64 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
             <>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Family Book No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("familyBookNo")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{familyBookNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
                 </span>
               </div>
 
               <InputField
-                label="Holder's Name (Book Cover)"
+                label={t("holderNameLabel")}
                 value={head.holderName}
-                placeholder="Name shown on the book cover"
+                placeholder={t("holderNamePlaceholder")}
                 onChange={(v) => patchHead({ holderName: v })}
                 required
               />
 
-              <SectionLabel>Household head</SectionLabel>
+              <SectionLabel>{t("householdHead")}</SectionLabel>
               <InputField
-                label="Name and Surname"
+                label={t("nameAndSurname")}
                 value={head.holderFullName}
-                placeholder="Full name of the household head"
+                placeholder={t("holderFullNamePlaceholder")}
                 onChange={(v) => patchHead({ holderFullName: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="ID Card No."
+                  label={t("idCardNo")}
                   value={head.idCardNo}
-                  placeholder="National ID number"
+                  placeholder={t("idCardNoPlaceholder")}
                   onChange={(v) => patchHead({ idCardNo: v })}
                   required
                 />
                 <InputField
-                  label="Place of Birth"
+                  label={t("placeOfBirth")}
                   value={head.placeOfBirth}
-                  placeholder="Town / village"
+                  placeholder={t("placeOfBirthPlaceholder")}
                   onChange={(v) => patchHead({ placeOfBirth: v })}
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Unit"
+                  label={t("unit")}
                   value={head.unit}
-                  placeholder="Unit no."
+                  placeholder={t("unitPlaceholder")}
                   onChange={(v) => patchHead({ unit: v })}
                   required
                 />
                 <InputField
-                  label="Group"
+                  label={t("group")}
                   value={head.group}
-                  placeholder="Group no."
+                  placeholder={t("groupPlaceholder")}
                   onChange={(v) => patchHead({ group: v })}
                   required
                 />
               </div>
 
-              <SectionLabel>Address</SectionLabel>
+              <SectionLabel>{t("address")}</SectionLabel>
               <LocationFields
                 province={head.province}
                 district={head.district}
@@ -389,10 +429,10 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
 
               <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <p className="text-xs font-medium" style={{ color: "#344EAD" }}>
-                  Date of Issue
+                  {t("dateOfIssue")}
                 </p>
                 <span className="text-[10px] font-medium px-2 py-1 rounded-full" style={{ backgroundColor: "white", color: "#344EAD" }}>
-                  Set on issuance
+                  {t("setOnIssuance")}
                 </span>
               </div>
             </>
@@ -405,10 +445,10 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                 <div className="flex items-center gap-2">
                   <Users2 className="w-4 h-4" style={{ color: "#344EAD" }} />
                   <p className="text-sm font-medium text-gray-700">
-                    {total} {total === 1 ? "person" : "people"}
+                    {total} {total === 1 ? t("person") : t("people")}
                   </p>
                 </div>
-                <p className="text-xs text-gray-400">{men} men · {women} women</p>
+                <p className="text-xs text-gray-400">{t("menCount", { n: men })} · {t("womenCount", { n: women })}</p>
               </div>
 
               {members.map((m, i) => {
@@ -423,7 +463,7 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                           <span className="text-xs font-semibold text-gray-400">#{i + 1}</span>
                         )}
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Member {i + 1}
+                          {t("memberN", { n: i + 1 })}
                         </p>
                       </div>
                       {members.length > 1 && (
@@ -437,57 +477,57 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                     </div>
 
                     <InputField
-                      label="Name and Surname"
+                      label={t("nameAndSurname")}
                       value={m.name}
-                      placeholder="Full name"
+                      placeholder={t("memberFullNamePlaceholder")}
                       onChange={(v) => patchMember(i, { name: v })}
                       required
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <SelectField
-                        label="Gender"
+                        label={t("gender")}
                         value={m.gender}
-                        options={GENDERS}
-                        placeholder="Select..."
+                        options={GENDERS.map((o) => ({ value: o.value, label: t(o.key) }))}
+                        placeholder={t("selectPlaceholder")}
                         onChange={(v) => patchMember(i, { gender: v })}
                         required
                       />
                       <DateField
-                        label="Date of Birth"
+                        label={t("dateOfBirth")}
                         value={m.dob}
                         onChange={(v) => patchMember(i, { dob: v })}
                         required
                       />
                     </div>
                     <SelectField
-                      label="Relationship to Head"
+                      label={t("relationshipToHead")}
                       value={m.relationship}
-                      options={RELATIONSHIPS}
-                      placeholder="Select..."
+                      options={RELATIONSHIPS.map((o) => ({ value: o.value, label: t(o.key) }))}
+                      placeholder={t("selectPlaceholder")}
                       onChange={(v) => patchMember(i, { relationship: v })}
                       required
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <SelectField
-                        label="Nationality"
+                        label={t("nationality")}
                         value={m.nationality}
-                        options={NATIONALITIES}
-                        placeholder="Select..."
+                        options={NATIONALITIES.map((o) => ({ value: o.value, label: t(o.key) }))}
+                        placeholder={t("selectPlaceholder")}
                         onChange={(v) => patchMember(i, { nationality: v })}
                         required
                       />
                       <SelectField
-                        label="Ethnicity (optional)"
+                        label={t("ethnicityOptional")}
                         value={m.ethnicity}
-                        options={ETHNICITIES}
-                        placeholder="Select..."
+                        options={ETHNICITIES.map((o) => ({ value: o.value, label: t(o.key) }))}
+                        placeholder={t("selectPlaceholder")}
                         onChange={(v) => patchMember(i, { ethnicity: v })}
                       />
                     </div>
 
                     <div className="flex items-center gap-1.5 text-xs text-gray-400 pt-0.5">
                       <Hash className="w-3 h-3 flex-shrink-0" />
-                      UIN — assigned automatically on registration
+                      {t("uinNote")}
                     </div>
                   </div>
                 );
@@ -499,7 +539,7 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                 style={{ color: "#344EAD" }}
               >
                 <Plus className="w-4 h-4" />
-                Add member
+                {t("addMember")}
               </button>
             </>
           )}
@@ -510,19 +550,20 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Please review the household record before submitting. The record is maintained by DoPS and updated automatically as life events are registered.
+                  {t("reviewNotice")}
                 </p>
               </div>
 
               <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2.5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Household</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("household")}</p>
                 {[
-                  ["Family Book No.", familyBookNo],
-                  ["Holder", head.holderFullName || head.holderName || "—"],
-                  ["ID Card No.", head.idCardNo || "—"],
-                  ["Unit / Group", `${head.unit || "—"} / ${head.group || "—"}`],
-                  ["Address", [head.village, head.district, head.province].filter(Boolean).join(", ") || "—"],
-                  ["People", `${total} (${men}M / ${women}F)`],
+                  [t("familyBookNo"), familyBookNo],
+                  [t("holder"), head.holderFullName || head.holderName || "—"],
+                  [t("idCardNo"), head.idCardNo || "—"],
+                  [t("unitGroup"), `${head.unit || "—"} / ${head.group || "—"}`],
+                  [t("address"), [head.village, head.district, head.province].filter(Boolean).join(", ") || "—"],
+                  [t("peopleLabel"), t("peopleSummary", { total, men, women })],
+                  [t("fee"), formatLak(0, lang)],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-start justify-between gap-3">
                     <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
@@ -532,15 +573,19 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
               </div>
 
               <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Members</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t("members")}</p>
                 <div className="space-y-2">
                   {members.map((m, i) => (
                     <div key={i} className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{m.name || `Member ${i + 1}`}</p>
-                        <p className="text-xs text-gray-400">{[m.relationship, m.gender, m.dob].filter(Boolean).join(" · ") || "—"}</p>
+                        <p className="text-sm font-medium text-gray-800 truncate">{m.name || t("memberN", { n: i + 1 })}</p>
+                        <p className="text-xs text-gray-400">{[
+                          m.relationship && labelOf(RELATIONSHIPS, m.relationship),
+                          m.gender && labelOf(GENDERS, m.gender),
+                          m.dob,
+                        ].filter(Boolean).join(" · ") || "—"}</p>
                       </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{m.nationality || "—"}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{m.nationality ? labelOf(NATIONALITIES, m.nationality) : "—"}</span>
                     </div>
                   ))}
                 </div>
@@ -565,16 +610,16 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
+                {t("submitting")}
               </>
             ) : step === lastStep ? (
               <>
-                Submit Record
+                {t("submitRecord")}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

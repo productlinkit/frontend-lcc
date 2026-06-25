@@ -26,6 +26,11 @@ declare module "*.csv" {
   export default content;
 }
 
+declare module "*.pdf" {
+  const src: string;
+  export default src;
+}
+
 // Figma Make asset alias, e.g. import x from "figma:asset/abc.png"
 declare module "figma:asset/*" {
   const src: string;

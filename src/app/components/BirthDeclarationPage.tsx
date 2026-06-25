@@ -12,6 +12,8 @@ import {
   Info,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import { useT, useLang } from "../i18n";
+import { formatLak } from "../serviceConfig";
 
 /*
  * Birth Declaration — follows the PRD §6 (Birth Declaration Form, ໃບແຈ້ງເກີດ,
@@ -88,29 +90,78 @@ interface InformantInfo {
   email: string; // O
 }
 
-/* ─── Constants ─── */
-const STEPS = [
-  { id: 1, label: "Header", subtitle: "Jurisdiction and document details" },
-  { id: 2, label: "The Child", subtitle: "Details of the newborn" },
-  { id: 3, label: "Mother", subtitle: "Mother's particulars" },
-  { id: 4, label: "Father", subtitle: "Father's particulars" },
-  { id: 5, label: "Informant", subtitle: "Reporter of the birth" },
-  { id: 6, label: "Review", subtitle: "Check and submit your declaration" },
-];
+/* ─── i18n option helpers ─── */
+type BirthKey = Parameters<ReturnType<typeof useT<"birth">>>[0];
+type Opt = { value: string; labelKey: BirthKey };
 
-const GENDERS = ["Female", "Male"];
-const MARITAL = ["Single", "Married", "Widowed", "Divorced"];
-const NATIONALITIES = ["Lao", "Thai", "Vietnamese", "Chinese", "Cambodian", "Other"];
-const ETHNICITIES = ["Lao", "Khmu", "Hmong", "Phouthai", "Tai", "Other"];
-const ETHNIC_GROUPS = ["Lao-Tai", "Mon-Khmer", "Hmong-Iu Mien", "Sino-Tibetan", "Other"];
-const RELIGIONS = ["Buddhism", "Christianity", "Islam", "Bahá'í", "Animism", "None", "Other"];
-const EDUCATION = [
-  "None", "Primary", "Lower Secondary", "Upper Secondary",
-  "Vocational", "Bachelor", "Master", "Doctorate",
+/* Option VALUES stay in English (used by validation & data); labels translate. */
+const GENDERS: Opt[] = [
+  { value: "Female", labelKey: "optFemale" },
+  { value: "Male", labelKey: "optMale" },
 ];
-const DELIVERY_MODE = ["Natural", "C-section"];
-const BIRTH_TYPE = ["Single", "Twins"];
-const BLOOD_TYPES = ["A", "B", "AB", "O", "Unknown"];
+const MARITAL: Opt[] = [
+  { value: "Single", labelKey: "optSingle" },
+  { value: "Married", labelKey: "optMarried" },
+  { value: "Widowed", labelKey: "optWidowed" },
+  { value: "Divorced", labelKey: "optDivorced" },
+];
+const NATIONALITIES: Opt[] = [
+  { value: "Lao", labelKey: "optNatLao" },
+  { value: "Thai", labelKey: "optNatThai" },
+  { value: "Vietnamese", labelKey: "optNatVietnamese" },
+  { value: "Chinese", labelKey: "optNatChinese" },
+  { value: "Cambodian", labelKey: "optNatCambodian" },
+  { value: "Other", labelKey: "optNatOther" },
+];
+const ETHNICITIES: Opt[] = [
+  { value: "Lao", labelKey: "optEthLao" },
+  { value: "Khmu", labelKey: "optEthKhmu" },
+  { value: "Hmong", labelKey: "optEthHmong" },
+  { value: "Phouthai", labelKey: "optEthPhouthai" },
+  { value: "Tai", labelKey: "optEthTai" },
+  { value: "Other", labelKey: "optEthOther" },
+];
+const ETHNIC_GROUPS: Opt[] = [
+  { value: "Lao-Tai", labelKey: "optGrpLaoTai" },
+  { value: "Mon-Khmer", labelKey: "optGrpMonKhmer" },
+  { value: "Hmong-Iu Mien", labelKey: "optGrpHmongIuMien" },
+  { value: "Sino-Tibetan", labelKey: "optGrpSinoTibetan" },
+  { value: "Other", labelKey: "optGrpOther" },
+];
+const RELIGIONS: Opt[] = [
+  { value: "Buddhism", labelKey: "optRelBuddhism" },
+  { value: "Christianity", labelKey: "optRelChristianity" },
+  { value: "Islam", labelKey: "optRelIslam" },
+  { value: "Bahá'í", labelKey: "optRelBahai" },
+  { value: "Animism", labelKey: "optRelAnimism" },
+  { value: "None", labelKey: "optRelNone" },
+  { value: "Other", labelKey: "optRelOther" },
+];
+const EDUCATION: Opt[] = [
+  { value: "None", labelKey: "optEduNone" },
+  { value: "Primary", labelKey: "optEduPrimary" },
+  { value: "Lower Secondary", labelKey: "optEduLowerSecondary" },
+  { value: "Upper Secondary", labelKey: "optEduUpperSecondary" },
+  { value: "Vocational", labelKey: "optEduVocational" },
+  { value: "Bachelor", labelKey: "optEduBachelor" },
+  { value: "Master", labelKey: "optEduMaster" },
+  { value: "Doctorate", labelKey: "optEduDoctorate" },
+];
+const DELIVERY_MODE: Opt[] = [
+  { value: "Natural", labelKey: "optDelNatural" },
+  { value: "C-section", labelKey: "optDelCsection" },
+];
+const BIRTH_TYPE: Opt[] = [
+  { value: "Single", labelKey: "optBirthSingle" },
+  { value: "Twins", labelKey: "optBirthTwins" },
+];
+const BLOOD_TYPES: Opt[] = [
+  { value: "A", labelKey: "optBloodA" },
+  { value: "B", labelKey: "optBloodB" },
+  { value: "AB", labelKey: "optBloodAB" },
+  { value: "O", labelKey: "optBloodO" },
+  { value: "Unknown", labelKey: "optBloodUnknown" },
+];
 
 /* ─── Blank records ─── */
 const blankChild: ChildInfo = {
@@ -172,7 +223,7 @@ function InputField({
 function SelectField({
   label, value, options, placeholder, onChange, required,
 }: {
-  label: React.ReactNode; value: string; options: string[];
+  label: React.ReactNode; value: string; options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
   return (
@@ -185,7 +236,7 @@ function SelectField({
           className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
         >
           <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
           <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,13 +264,14 @@ function AddressFields({
   onChange: (patch: Partial<{ addrHouseNo: string; addrVillage: string; addrDistrict: string; addrProvince: string }>) => void;
   withHouseNo?: boolean;
 }) {
+  const t = useT("birth");
   return (
     <>
       {withHouseNo && (
         <InputField
-          label="House No."
+          label={t("houseNoLabel")}
           value={houseNo}
-          placeholder="House number"
+          placeholder={t("houseNoPlaceholder")}
           onChange={(v) => onChange({ addrHouseNo: v })}
         />
       )}
@@ -246,51 +298,53 @@ function ParentSection({
 }: {
   value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
 }) {
+  const t = useT("birth");
+  const opts = (list: Opt[]) => list.map((o) => ({ value: o.value, label: t(o.labelKey) }));
   return (
     <>
       <InputField
-        label="Full Name (Lao / English)"
+        label={t("fullNameLabel")}
         value={value.fullName}
-        placeholder="Full name"
+        placeholder={t("parentNamePlaceholder")}
         onChange={(v) => onChange({ fullName: v })}
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <DateField
-          label="Date of Birth"
+          label={t("dobLabel")}
           value={value.dob}
           onChange={(v) => onChange({ dob: v })}
           required
         />
         <SelectField
-          label="Marital Status"
+          label={t("maritalStatusLabel")}
           value={value.maritalStatus}
-          options={MARITAL}
-          placeholder="Select..."
+          options={opts(MARITAL)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ maritalStatus: v })}
           required
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnicity"
+          label={t("ethnicityLabel")}
           value={value.ethnicity}
-          options={ETHNICITIES}
-          placeholder="Select..."
+          options={opts(ETHNICITIES)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ ethnicity: v })}
           required
         />
         <SelectField
-          label="Nationality"
+          label={t("nationalityLabel")}
           value={value.nationality}
-          options={NATIONALITIES}
-          placeholder="Select..."
+          options={opts(NATIONALITIES)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ nationality: v })}
           required
         />
       </div>
 
-      <SectionLabel>Current address</SectionLabel>
+      <SectionLabel>{t("currentAddressSection")}</SectionLabel>
       <AddressFields
         houseNo={value.addrHouseNo}
         village={value.addrVillage}
@@ -300,64 +354,75 @@ function ParentSection({
       />
 
       <InputField
-        label="Census Book No. / ID Card No."
+        label={t("censusOrIdLabel")}
         value={value.censusOrId}
-        placeholder="One identifier + issue date"
+        placeholder={t("censusOrIdPlaceholder")}
         onChange={(v) => onChange({ censusOrId: v })}
         required
       />
 
-      <SectionLabel>Additional details (optional)</SectionLabel>
+      <SectionLabel>{t("additionalDetailsSection")}</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Ethnic Group"
+          label={t("ethnicGroupLabel")}
           value={value.ethnicGroup}
-          options={ETHNIC_GROUPS}
-          placeholder="Select..."
+          options={opts(ETHNIC_GROUPS)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ ethnicGroup: v })}
         />
         <SelectField
-          label="Religion"
+          label={t("religionLabel")}
           value={value.religion}
-          options={RELIGIONS}
-          placeholder="Select..."
+          options={opts(RELIGIONS)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ religion: v })}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label="Education Level"
+          label={t("educationLabel")}
           value={value.education}
-          options={EDUCATION}
-          placeholder="Select..."
+          options={opts(EDUCATION)}
+          placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ education: v })}
         />
         <InputField
-          label="Occupation"
+          label={t("occupationLabel")}
           value={value.occupation}
-          placeholder="Occupation"
+          placeholder={t("occupationPlaceholder")}
           onChange={(v) => onChange({ occupation: v })}
         />
       </div>
       <InputField
-        label="Fingerprint Code"
+        label={t("fingerprintLabel")}
         value={value.fingerprint}
-        placeholder="Biometric fingerprint code"
+        placeholder={t("parentFingerprintPlaceholder")}
         onChange={(v) => onChange({ fingerprint: v })}
       />
     </>
   );
 }
 
+/* ─── Step meta ─── */
+const STEP_META: { id: number; titleKey: BirthKey; subtitleKey: BirthKey; shortKey: BirthKey }[] = [
+  { id: 1, titleKey: "step1Title", subtitleKey: "step1Subtitle", shortKey: "stepHeader" },
+  { id: 2, titleKey: "step2Title", subtitleKey: "step2Subtitle", shortKey: "stepChild" },
+  { id: 3, titleKey: "step3Title", subtitleKey: "step3Subtitle", shortKey: "stepMother" },
+  { id: 4, titleKey: "step4Title", subtitleKey: "step4Subtitle", shortKey: "stepFather" },
+  { id: 5, titleKey: "step5Title", subtitleKey: "step5Subtitle", shortKey: "stepInformant" },
+  { id: 6, titleKey: "step6Title", subtitleKey: "step6Subtitle", shortKey: "stepReview" },
+];
+const STEP_COUNT = STEP_META.length;
+
 /* ─── Step Indicator (spans the form container width) ─── */
 function StepIndicator({ step }: { step: number }) {
   return (
     <div className="bg-white border-b border-gray-100">
       <div className="max-w-screen-sm mx-auto px-4 py-4 flex items-center">
-        {STEPS.map((s, i) => {
+        {STEP_META.map((s, i) => {
           const done = step > s.id;
           const active = step === s.id;
-          const isLast = i === STEPS.length - 1;
+          const isLast = i === STEP_META.length - 1;
           return (
             <div key={s.id} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
               <div
@@ -388,14 +453,15 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 function StepHeader({ step }: { step: number }) {
-  const meta = STEPS.find((s) => s.id === step)!;
+  const t = useT("birth");
+  const meta = STEP_META.find((s) => s.id === step)!;
   return (
     <div className="mb-3 pb-1">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#344EAD" }}>
-        Step {step} of {STEPS.length}
+        {t("stepOf", { n: step, m: STEP_COUNT })}
       </p>
-      <h2 className="text-gray-900 mt-0.5">{meta.label}</h2>
-      <p className="text-gray-400 text-xs mt-0.5">{meta.subtitle}</p>
+      <h2 className="text-gray-900 mt-0.5">{t(meta.titleKey)}</h2>
+      <p className="text-gray-400 text-xs mt-0.5">{t(meta.subtitleKey)}</p>
     </div>
   );
 }
@@ -406,6 +472,10 @@ interface BirthDeclarationPageProps {
 }
 
 export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
+  const t = useT("birth");
+  const { lang } = useLang();
+  const opts = (list: Opt[]) => list.map((o) => ({ value: o.value, label: t(o.labelKey) }));
+
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -454,7 +524,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
     return true;
   };
 
-  const lastStep = STEPS.length;
+  const lastStep = STEP_COUNT;
 
   const goBack = () => {
     if (step > 1) setStep((s) => s - 1);
@@ -481,18 +551,18 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
             <Check className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
           <div>
-            <h2 className="text-gray-900 mb-2">Birth Declaration Submitted!</h2>
+            <h2 className="text-gray-900 mb-2">{t("successTitle")}</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              The declaration has been received. The village office will review it and a UIN will be assigned to the child.
+              {t("successText")}
             </p>
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: "Child", value: child.fullName || "—" },
-              { label: "Document No.", value: documentNo },
-              { label: "Informant", value: informant.fullName || "—" },
-              { label: "Est. review", value: "≤ 5 working days" },
-              { label: "Status", value: "Submitted", isStatus: true },
+              { label: t("successChild"), value: child.fullName || t("emptyValue") },
+              { label: t("documentNo"), value: documentNo },
+              { label: t("successInformant"), value: informant.fullName || t("emptyValue") },
+              { label: t("successEstReview"), value: t("successEstReviewValue") },
+              { label: t("successStatus"), value: t("successStatusValue"), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -511,9 +581,9 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
             className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "#344EAD" }}
           >
-            Back to Home
+            {t("backToHome")}
           </button>
-          <p className="text-xs text-gray-400">Track your declaration in the History tab</p>
+          <p className="text-xs text-gray-400">{t("trackHint")}</p>
         </div>
       </div>
     );
@@ -532,8 +602,8 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">Birth Declaration</p>
-            <p className="text-xs text-gray-400">Online Application</p>
+            <p className="text-sm font-semibold text-gray-800">{t("headerTitle")}</p>
+            <p className="text-xs text-gray-400">{t("headerSubtitle")}</p>
           </div>
           <div className="w-9 flex-shrink-0" />
         </div>
@@ -553,11 +623,18 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
             <>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Document No.</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("documentNo")}</p>
                   <p className="text-sm font-semibold text-gray-800 mt-0.5">{documentNo}</p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  Auto-generated
+                  {t("autoGenerated")}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("fee")}</p>
+                <span className="text-sm font-semibold" style={{ color: "#344EAD" }}>
+                  {formatLak(0, lang)}
                 </span>
               </div>
 
@@ -572,9 +649,9 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Scale className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: "#344EAD" }}>Legal basis</p>
+                  <p className="text-xs font-semibold" style={{ color: "#344EAD" }}>{t("legalBasisTitle")}</p>
                   <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#344EAD" }}>
-                    Pursuant to the Family Law No. 44/NA, dated 14/06/2018. The date of declaration is set automatically on submission.
+                    {t("legalBasisText")}
                   </p>
                 </div>
               </div>
@@ -587,28 +664,28 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Baby className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  A Unique Identification Number (UIN) is assigned to the child on registration.
+                  {t("childUinNote")}
                 </p>
               </div>
 
               <InputField
-                label="Full Name (Lao / English)"
+                label={t("fullNameLabel")}
                 value={child.fullName}
-                placeholder="Child's full name"
+                placeholder={t("childNamePlaceholder")}
                 onChange={(v) => patchChild({ fullName: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Gender"
+                  label={t("genderLabel")}
                   value={child.gender}
-                  options={GENDERS}
-                  placeholder="Select..."
+                  options={opts(GENDERS)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ gender: v })}
                   required
                 />
                 <DateField
-                  label="Date of Birth"
+                  label={t("dobLabel")}
                   value={child.dob}
                   onChange={(v) => patchChild({ dob: v })}
                   required
@@ -616,17 +693,17 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Type of Birth"
+                  label={t("typeOfBirthLabel")}
                   value={child.birthType}
-                  options={BIRTH_TYPE}
-                  placeholder="Select..."
+                  options={opts(BIRTH_TYPE)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ birthType: v })}
                   required
                 />
                 <InputField
-                  label="Birth Order (child no.)"
+                  label={t("birthOrderLabel")}
                   value={child.birthOrder}
-                  placeholder="e.g. 1"
+                  placeholder={t("birthOrderPlaceholder")}
                   inputMode="numeric"
                   maxLength={2}
                   onChange={(v) => patchChild({ birthOrder: v.replace(/\D/g, "").slice(0, 2) })}
@@ -637,17 +714,17 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               {child.birthType === "Twins" && (
                 <div className="grid grid-cols-2 gap-3">
                   <InputField
-                    label="Twin — Full Name"
+                    label={t("twinNameLabel")}
                     value={child.twinName}
-                    placeholder="Co-delivered child"
+                    placeholder={t("twinNamePlaceholder")}
                     onChange={(v) => patchChild({ twinName: v })}
                     required
                   />
                   <SelectField
-                    label="Twin — Gender"
+                    label={t("twinGenderLabel")}
                     value={child.twinGender}
-                    options={GENDERS}
-                    placeholder="Select..."
+                    options={opts(GENDERS)}
+                    placeholder={t("selectPlaceholder")}
                     onChange={(v) => patchChild({ twinGender: v })}
                   />
                 </div>
@@ -655,36 +732,37 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
 
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Ethnicity"
+                  label={t("ethnicityLabel")}
                   value={child.ethnicity}
-                  options={ETHNICITIES}
-                  placeholder="Select..."
+                  options={opts(ETHNICITIES)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ ethnicity: v })}
                   required
                 />
                 <SelectField
-                  label="Nationality"
+                  label={t("nationalityLabel")}
                   value={child.nationality}
-                  options={NATIONALITIES}
-                  placeholder="Select..."
+                  options={opts(NATIONALITIES)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ nationality: v })}
                   required
                 />
               </div>
               <SelectField
-                label="Religion"
+                label={t("religionLabel")}
                 value={child.religion}
-                options={RELIGIONS}
-                placeholder="Select..."
+                options={opts(RELIGIONS)}
+                placeholder={t("selectPlaceholder")}
                 onChange={(v) => patchChild({ religion: v })}
                 required
               />
 
-              <SectionLabel>Place of birth</SectionLabel>
+              <SectionLabel>{t("placeOfBirthSection")}</SectionLabel>
               <LocationFields
                 province={child.pobProvince}
                 district={child.pobDistrict}
                 village={child.pobVillage}
+                villageLabel={t("pobVillageLabel")}
                 required
                 onChange={(p) =>
                   patchChild({
@@ -695,13 +773,13 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 }
               />
               <InputField
-                label="Country"
+                label={t("countryLabel")}
                 value={child.pobCountry}
-                placeholder="Country"
+                placeholder={t("countryPlaceholder")}
                 onChange={(v) => patchChild({ pobCountry: v })}
               />
 
-              <SectionLabel>Current address</SectionLabel>
+              <SectionLabel>{t("currentAddressSection")}</SectionLabel>
               <AddressFields
                 houseNo={child.addrHouseNo}
                 village={child.addrVillage}
@@ -710,50 +788,50 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 onChange={patchChild}
               />
 
-              <SectionLabel>Additional details (optional)</SectionLabel>
+              <SectionLabel>{t("additionalDetailsSection")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Weight (kg)"
+                  label={t("weightLabel")}
                   value={child.weight}
-                  placeholder="e.g. 3.2"
+                  placeholder={t("weightPlaceholder")}
                   inputMode="numeric"
                   onChange={(v) => patchChild({ weight: v })}
                 />
                 <InputField
-                  label="Height (cm)"
+                  label={t("heightLabel")}
                   value={child.height}
-                  placeholder="e.g. 50"
+                  placeholder={t("heightPlaceholder")}
                   inputMode="numeric"
                   onChange={(v) => patchChild({ height: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Blood Type / Group"
+                  label={t("bloodTypeLabel")}
                   value={child.bloodType}
-                  options={BLOOD_TYPES}
-                  placeholder="Select..."
+                  options={opts(BLOOD_TYPES)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ bloodType: v })}
                 />
                 <SelectField
-                  label="Mode of Delivery"
+                  label={t("deliveryModeLabel")}
                   value={child.deliveryMode}
-                  options={DELIVERY_MODE}
-                  placeholder="Select..."
+                  options={opts(DELIVERY_MODE)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchChild({ deliveryMode: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Assisted by"
+                  label={t("assistedByLabel")}
                   value={child.deliveryAssistedBy}
-                  placeholder="Midwife / doctor"
+                  placeholder={t("assistedByPlaceholder")}
                   onChange={(v) => patchChild({ deliveryAssistedBy: v })}
                 />
                 <InputField
-                  label="Fingerprint Code"
+                  label={t("fingerprintLabel")}
                   value={child.fingerprint}
-                  placeholder="Biometric code"
+                  placeholder={t("fingerprintPlaceholder")}
                   onChange={(v) => patchChild({ fingerprint: v })}
                 />
               </div>
@@ -766,7 +844,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <User className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Section 2 — the child's mother.
+                  {t("motherNote")}
                 </p>
               </div>
               <ParentSection value={mother} onChange={patchMother} />
@@ -779,7 +857,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <User className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Section 3 — the child's father.
+                  {t("fatherNote")}
                 </p>
               </div>
 
@@ -796,8 +874,8 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 <div className="flex items-start gap-2.5">
                   <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Father unknown / not declared</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Submit a sole-parent declaration</p>
+                    <p className="text-sm font-medium text-gray-800">{t("fatherUnknownTitle")}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("fatherUnknownSubtitle")}</p>
                   </div>
                 </div>
                 <div
@@ -821,34 +899,34 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                 <Users className="w-4 h-4 flex-shrink-0" style={{ color: "#344EAD" }} />
                 <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  Section 4 — the person reporting the birth.
+                  {t("informantNote")}
                 </p>
               </div>
 
               <InputField
-                label="Full Name (Lao / English)"
+                label={t("fullNameLabel")}
                 value={informant.fullName}
-                placeholder="Informant's full name"
+                placeholder={t("informantNamePlaceholder")}
                 onChange={(v) => patchInformant({ fullName: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <DateField
-                  label="Date of Birth"
+                  label={t("dobLabel")}
                   value={informant.dob}
                   onChange={(v) => patchInformant({ dob: v })}
                   required
                 />
                 <InputField
-                  label="Relationship to Child"
+                  label={t("relationshipLabel")}
                   value={informant.relationship}
-                  placeholder="e.g. Mother, Father"
+                  placeholder={t("relationshipPlaceholder")}
                   onChange={(v) => patchInformant({ relationship: v })}
                   required
                 />
               </div>
 
-              <SectionLabel>Current address</SectionLabel>
+              <SectionLabel>{t("currentAddressSection")}</SectionLabel>
               <AddressFields
                 houseNo={informant.addrHouseNo}
                 village={informant.addrVillage}
@@ -858,59 +936,59 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               />
 
               <InputField
-                label="Census Book No. / ID Card No."
+                label={t("censusOrIdLabel")}
                 value={informant.censusOrId}
-                placeholder="One identifier + issue date"
+                placeholder={t("censusOrIdPlaceholder")}
                 onChange={(v) => patchInformant({ censusOrId: v })}
                 required
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
-                  label="Phone Number"
+                  label={t("phoneLabel")}
                   value={informant.phone}
-                  placeholder="+856..."
+                  placeholder={t("phonePlaceholder")}
                   inputMode="tel"
                   onChange={(v) => patchInformant({ phone: v })}
                   required
                 />
                 <InputField
-                  label="Email (optional)"
+                  label={t("emailLabel")}
                   value={informant.email}
-                  placeholder="name@email.com"
+                  placeholder={t("emailPlaceholder")}
                   inputMode="email"
                   onChange={(v) => patchInformant({ email: v })}
                 />
               </div>
 
-              <SectionLabel>Additional details (optional)</SectionLabel>
+              <SectionLabel>{t("additionalDetailsSection")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Marital Status"
+                  label={t("maritalStatusLabel")}
                   value={informant.maritalStatus}
-                  options={MARITAL}
-                  placeholder="Select..."
+                  options={opts(MARITAL)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchInformant({ maritalStatus: v })}
                 />
                 <SelectField
-                  label="Education Level"
+                  label={t("educationLabel")}
                   value={informant.education}
-                  options={EDUCATION}
-                  placeholder="Select..."
+                  options={opts(EDUCATION)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchInformant({ education: v })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
-                  label="Nationality"
+                  label={t("nationalityLabel")}
                   value={informant.nationality}
-                  options={NATIONALITIES}
-                  placeholder="Select..."
+                  options={opts(NATIONALITIES)}
+                  placeholder={t("selectPlaceholder")}
                   onChange={(v) => patchInformant({ nationality: v })}
                 />
                 <InputField
-                  label="Fingerprint Code"
+                  label={t("fingerprintLabel")}
                   value={informant.fingerprint}
-                  placeholder="Biometric code"
+                  placeholder={t("fingerprintPlaceholder")}
                   onChange={(v) => patchInformant({ fingerprint: v })}
                 />
               </div>
@@ -923,49 +1001,49 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Please review the declaration before submitting. The Village Chief, birth attendant (if any) and informant sign the form at the village office.
+                  {t("reviewWarning")}
                 </p>
               </div>
 
               {[
                 {
-                  title: "Header",
+                  title: t("step1Title"),
                   rows: [
-                    ["Province / District / Village", [header.province, header.district, header.village].filter(Boolean).join(" / ") || "—"],
-                    ["Document No.", documentNo],
+                    [t("reviewProvinceDistrictVillage"), [header.province, header.district, header.village].filter(Boolean).join(" / ") || t("emptyValue")],
+                    [t("documentNo"), documentNo],
                   ],
                 },
                 {
-                  title: "The Child",
+                  title: t("step2Title"),
                   rows: [
-                    ["Name", child.fullName || "—"],
-                    ["Gender / DoB", [child.gender, child.dob].filter(Boolean).join(" · ") || "—"],
-                    ["Birth", [child.birthType, child.birthOrder && `#${child.birthOrder}`].filter(Boolean).join(" · ") || "—"],
-                    ["Place of birth", [child.pobVillage, child.pobDistrict, child.pobProvince].filter(Boolean).join(", ") || "—"],
+                    [t("reviewName"), child.fullName || t("emptyValue")],
+                    [t("reviewGenderDob"), [child.gender, child.dob].filter(Boolean).join(" · ") || t("emptyValue")],
+                    [t("reviewBirth"), [child.birthType, child.birthOrder && `#${child.birthOrder}`].filter(Boolean).join(" · ") || t("emptyValue")],
+                    [t("reviewPlaceOfBirth"), [child.pobVillage, child.pobDistrict, child.pobProvince].filter(Boolean).join(", ") || t("emptyValue")],
                   ],
                 },
                 {
-                  title: "Mother",
+                  title: t("step3Title"),
                   rows: [
-                    ["Name", mother.fullName || "—"],
-                    ["ID / Census", mother.censusOrId || "—"],
+                    [t("reviewName"), mother.fullName || t("emptyValue")],
+                    [t("reviewIdCensus"), mother.censusOrId || t("emptyValue")],
                   ],
                 },
                 {
-                  title: "Father",
+                  title: t("step4Title"),
                   rows: fatherUnknown
-                    ? [["Status", "Unknown / sole-parent declaration"]]
+                    ? [[t("reviewStatus"), t("reviewFatherUnknown")]]
                     : [
-                        ["Name", father.fullName || "—"],
-                        ["ID / Census", father.censusOrId || "—"],
+                        [t("reviewName"), father.fullName || t("emptyValue")],
+                        [t("reviewIdCensus"), father.censusOrId || t("emptyValue")],
                       ],
                 },
                 {
-                  title: "Informant",
+                  title: t("step5Title"),
                   rows: [
-                    ["Name", informant.fullName || "—"],
-                    ["Relationship", informant.relationship || "—"],
-                    ["Phone", informant.phone || "—"],
+                    [t("reviewName"), informant.fullName || t("emptyValue")],
+                    [t("reviewRelationship"), informant.relationship || t("emptyValue")],
+                    [t("reviewPhone"), informant.phone || t("emptyValue")],
                   ],
                 },
               ].map((card) => (
@@ -999,16 +1077,16 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
+                {t("submitting")}
               </>
             ) : step === lastStep ? (
               <>
-                Submit Declaration
+                {t("submitDeclaration")}
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Continue
+                {t("continue")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
