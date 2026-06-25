@@ -160,10 +160,24 @@ function formatKip(amount: number) {
   return `${amount < 0 ? "-" : ""}${abs.toLocaleString("en-US")} ₭`;
 }
 
-export function WalletPage() {
+interface WalletPageProps {
+  isAuthenticated: boolean;
+  onRequireAuth: () => void;
+}
+
+export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) {
   const [showBalance, setShowBalance] = useState(true);
-  const balance = 2_485_000;
-  const totalDue = BILLS.reduce((sum, b) => sum + b.amount, 0);
+
+  // Before login: empty wallet. After login: demo data appears.
+  const balance = isAuthenticated ? 2_485_000 : 0;
+  const bills = isAuthenticated ? BILLS : [];
+  const transactions = isAuthenticated ? TRANSACTIONS : [];
+  const totalDue = bills.reduce((sum, b) => sum + b.amount, 0);
+
+  // Any wallet action while logged out routes to login first.
+  const act = () => {
+    if (!isAuthenticated) onRequireAuth();
+  };
 
   return (
     <div className="min-h-full">
@@ -203,13 +217,17 @@ export function WalletPage() {
             </p>
             <div className="flex gap-2 mt-4">
               <button
+                onClick={act}
                 className="flex-1 py-2.5 rounded-xl bg-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md hover:opacity-90 transition-opacity"
                 style={{ color: "#344EAD" }}
               >
                 <Plus className="w-4 h-4" />
                 Top up
               </button>
-              <button className="flex-1 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors">
+              <button
+                onClick={act}
+                className="flex-1 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              >
                 <Send className="w-4 h-4" />
                 Transfer
               </button>
@@ -226,6 +244,7 @@ export function WalletPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-gray-800">Quick payment</h2>
             <button
+              onClick={act}
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
@@ -238,6 +257,7 @@ export function WalletPage() {
               return (
                 <button
                   key={a.id}
+                  onClick={act}
                   className="flex flex-col items-center gap-2 group"
                 >
                   <div
@@ -261,10 +281,13 @@ export function WalletPage() {
             <div>
               <h2 className="text-gray-800">Bills due</h2>
               <p className="text-gray-500 text-xs mt-0.5">
-                Total {formatKip(totalDue)} across {BILLS.length} bills
+                {bills.length > 0
+                  ? `Total ${formatKip(totalDue)} across ${bills.length} bills`
+                  : "No bills due"}
               </p>
             </div>
             <button
+              onClick={act}
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
@@ -272,8 +295,17 @@ export function WalletPage() {
             </button>
           </div>
 
+          {bills.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <Receipt className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-sm">No bills due</p>
+              <p className="text-gray-400 text-xs mt-1">Sign in to see your bills</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {BILLS.map((b) => {
+            {bills.map((b) => {
               const Icon = b.icon;
               const statusStyle =
                 b.status === "overdue"
@@ -316,6 +348,7 @@ export function WalletPage() {
                       {formatKip(b.amount)}
                     </p>
                     <button
+                      onClick={act}
                       className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
                       style={{ backgroundColor: "#344EAD" }}
                     >
@@ -326,6 +359,7 @@ export function WalletPage() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* Recent Transactions */}
@@ -333,6 +367,7 @@ export function WalletPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-gray-800">Recent transactions</h2>
             <button
+              onClick={act}
               className="text-xs font-medium flex items-center gap-1"
               style={{ color: "#344EAD" }}
             >
@@ -340,8 +375,17 @@ export function WalletPage() {
             </button>
           </div>
 
+          {transactions.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <ArrowUpRight className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-sm">No recent transactions</p>
+              <p className="text-gray-400 text-xs mt-1">Sign in to see your activity</p>
+            </div>
+          ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100">
-            {TRANSACTIONS.map((t) => {
+            {transactions.map((t) => {
               const Icon = t.icon;
               const isIn = t.type === "in";
               return (
@@ -384,6 +428,7 @@ export function WalletPage() {
               );
             })}
           </div>
+          )}
         </div>
 
         <div className="h-4" />

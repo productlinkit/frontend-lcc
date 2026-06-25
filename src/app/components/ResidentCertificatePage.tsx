@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
+import { LocationFields, DateField } from "./formFields";
 import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
 
 /* ─── Types ─── */
@@ -74,14 +75,6 @@ const STEPS = [
   { id: 4, label: "Current Residence", subtitle: "The address being attested" },
   { id: 5, label: "Household & Purpose", subtitle: "Family book reference, parentage and purpose" },
   { id: 6, label: "Payment", subtitle: "Service fee" },
-];
-
-const PROVINCES = [
-  "Vientiane Capital", "Phongsali", "Luang Namtha", "Oudomxay",
-  "Bokeo", "Luang Prabang", "Houaphan", "Xayabury",
-  "Xieng Khouang", "Vientiane Province", "Borikhamxay", "Khammouane",
-  "Savannakhet", "Salavan", "Xekong", "Champasak",
-  "Attapeu", "Xaysomboune",
 ];
 
 const NATIONALITIES = [
@@ -574,27 +567,20 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {/* Step 3 — Location & Authority */}
           {step === 3 && (
             <>
-              <SelectField
-                label="Province"
-                value={form.province}
-                options={PROVINCES}
-                placeholder="Select province..."
-                onChange={(v) => set("province", v)}
+              <LocationFields
+                province={form.province}
+                district={form.district}
+                village={form.villageName}
+                villageLabel="Village's Name"
                 required
-              />
-              <InputField
-                label="District"
-                value={form.district}
-                placeholder="e.g. Chanthabouly"
-                onChange={(v) => set("district", v)}
-                required
-              />
-              <InputField
-                label="Village's Name"
-                value={form.villageName}
-                placeholder="Village whose office issues the certificate"
-                onChange={(v) => set("villageName", v)}
-                required
+                onChange={(p) =>
+                  setForm((f) => ({
+                    ...f,
+                    ...(p.province !== undefined ? { province: p.province } : {}),
+                    ...(p.district !== undefined ? { district: p.district } : {}),
+                    ...(p.village !== undefined ? { villageName: p.village } : {}),
+                  }))
+                }
               />
               <InputField
                 label="Village Chief's Name (Nai Ban)"
@@ -667,10 +653,9 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 required
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <DateField
                   label="Census Book Issue Date (if applicable)"
                   value={form.censusBookDate}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => set("censusBookDate", v)}
                 />
                 <InputField

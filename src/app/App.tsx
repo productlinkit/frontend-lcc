@@ -15,16 +15,35 @@ import { ServicePage } from "./components/ServicePage";
 
 export type Lang = "en" | "lo";
 
-const PROTECTED_TABS = new Set(["service", "history", "wallet", "account"]);
+// Tabs that require login. Service & Wallet are browsable without login (Wallet
+// shows an empty state); applying for a service or using a wallet action sends
+// the user to login first, then back to the intended destination.
+const PROTECTED_TABS = new Set([
+  "history",
+  "account",
+  "resident-certificate",
+  "birth-declaration",
+  "death-declaration",
+  "marriage-certificate",
+  "divorce-certificate",
+  "family-book",
+]);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [lang, setLang] = useState<Lang>("en");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+
+  // Send the user to login, remembering where they wanted to go.
+  function requireAuth(intended: string) {
+    setPendingTab(intended);
+    setActiveTab("auth");
+  }
 
   function handleTabChange(tab: string) {
     if (PROTECTED_TABS.has(tab) && !isAuthenticated) {
-      setActiveTab("auth");
+      requireAuth(tab);
     } else {
       setActiveTab(tab);
     }
@@ -32,7 +51,9 @@ export default function App() {
 
   function handleAuthSuccess() {
     setIsAuthenticated(true);
-    setActiveTab("account");
+    const dest = pendingTab ?? "account";
+    setPendingTab(null);
+    setActiveTab(dest);
   }
 
   // Auth renders fullscreen — no navbar
@@ -40,7 +61,7 @@ export default function App() {
     return (
       <AuthPage
         onSuccess={handleAuthSuccess}
-        onBack={() => setActiveTab("home")}
+        onBack={() => { setPendingTab(null); setActiveTab("home"); }}
       />
     );
   }
@@ -66,7 +87,12 @@ export default function App() {
       case "history":
         return <HistoryPage />;
       case "wallet":
-        return <WalletPage />;
+        return (
+          <WalletPage
+            isAuthenticated={isAuthenticated}
+            onRequireAuth={() => requireAuth("wallet")}
+          />
+        );
       case "account":
         return <AccountPage lang={lang} />;
       default:

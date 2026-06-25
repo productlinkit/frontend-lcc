@@ -11,6 +11,7 @@ import {
   Users,
   Info,
 } from "lucide-react";
+import { LocationFields, DateField } from "./formFields";
 
 /*
  * Death Declaration — follows the PRD §7 (Death Declaration Form, ໃບແຈ້ງເສຍຊີວິດ,
@@ -95,14 +96,6 @@ const STEPS = [
   { id: 4, label: "Father", subtitle: "Father of the deceased" },
   { id: 5, label: "Informant", subtitle: "Reporter of the death" },
   { id: 6, label: "Review", subtitle: "Check and submit your declaration" },
-];
-
-const PROVINCES = [
-  "Vientiane Capital", "Phongsali", "Luang Namtha", "Oudomxay",
-  "Bokeo", "Luang Prabang", "Houaphan", "Xayabury",
-  "Xieng Khouang", "Vientiane Province", "Borikhamxay", "Khammouane",
-  "Savannakhet", "Salavan", "Xekong", "Champasak",
-  "Attapeu", "Xaysomboune",
 ];
 
 const GENDERS = ["Female", "Male"];
@@ -224,28 +217,18 @@ function AddressFields({
         placeholder="House number"
         onChange={(v) => onChange({ addrHouseNo: v })}
       />
-      <div className="grid grid-cols-2 gap-3">
-        <InputField
-          label="Village"
-          value={village}
-          placeholder="Ban..."
-          onChange={(v) => onChange({ addrVillage: v })}
-          required={required}
-        />
-        <InputField
-          label="District"
-          value={district}
-          placeholder="Muang..."
-          onChange={(v) => onChange({ addrDistrict: v })}
-        />
-      </div>
-      <SelectField
-        label="Province / Capital"
-        value={province}
-        options={PROVINCES}
-        placeholder="Select province..."
-        onChange={(v) => onChange({ addrProvince: v })}
+      <LocationFields
+        province={province}
+        district={district}
+        village={village}
         required={required}
+        onChange={(p) =>
+          onChange({
+            ...(p.province !== undefined ? { addrProvince: p.province } : {}),
+            ...(p.district !== undefined ? { addrDistrict: p.district } : {}),
+            ...(p.village !== undefined ? { addrVillage: p.village } : {}),
+          })
+        }
       />
     </>
   );
@@ -267,10 +250,9 @@ function ParentSection({
         required
       />
       <div className="grid grid-cols-2 gap-3">
-        <InputField
+        <DateField
           label="Date of Birth (optional)"
           value={value.dob}
-          placeholder="DD/MM/YYYY"
           onChange={(v) => onChange({ dob: v })}
         />
         <SelectField
@@ -621,27 +603,12 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 </span>
               </div>
 
-              <SelectField
-                label="Province / Capital City"
-                value={header.province}
-                options={PROVINCES}
-                placeholder="Select province..."
-                onChange={(v) => setHeader((h) => ({ ...h, province: v }))}
+              <LocationFields
+                province={header.province}
+                district={header.district}
+                village={header.village}
                 required
-              />
-              <InputField
-                label="District"
-                value={header.district}
-                placeholder="e.g. Chanthabouly"
-                onChange={(v) => setHeader((h) => ({ ...h, district: v }))}
-                required
-              />
-              <InputField
-                label="Village"
-                value={header.village}
-                placeholder="Village issuing the declaration"
-                onChange={(v) => setHeader((h) => ({ ...h, village: v }))}
-                required
+                onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
@@ -682,10 +649,9 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                   onChange={(v) => patchDeceased({ gender: v })}
                   required
                 />
-                <InputField
+                <DateField
                   label="Date of Birth"
                   value={deceased.dob}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchDeceased({ dob: v })}
                   required
                 />
@@ -733,35 +699,26 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 required
               />
 
+              <SectionLabel>Place of death</SectionLabel>
+              <LocationFields
+                province={deceased.podProvince}
+                district={deceased.podDistrict}
+                village={deceased.podVillage}
+                required
+                onChange={(p) =>
+                  patchDeceased({
+                    ...(p.province !== undefined ? { podProvince: p.province } : {}),
+                    ...(p.district !== undefined ? { podDistrict: p.district } : {}),
+                    ...(p.village !== undefined ? { podVillage: p.village } : {}),
+                  })
+                }
+              />
+
               <SectionLabel>The death</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
-                <InputField
-                  label="Place of Death — Village"
-                  value={deceased.podVillage}
-                  placeholder="Ban..."
-                  onChange={(v) => patchDeceased({ podVillage: v })}
-                  required
-                />
-                <InputField
-                  label="District / City"
-                  value={deceased.podDistrict}
-                  placeholder="Muang..."
-                  onChange={(v) => patchDeceased({ podDistrict: v })}
-                />
-              </div>
-              <SelectField
-                label="Place of Death — Province"
-                value={deceased.podProvince}
-                options={PROVINCES}
-                placeholder="Select..."
-                onChange={(v) => patchDeceased({ podProvince: v })}
-                required
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <DateField
                   label="Date of Death"
                   value={deceased.dateOfDeath}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchDeceased({ dateOfDeath: v })}
                   required
                 />
@@ -879,10 +836,9 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                 required
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <DateField
                   label="Date of Birth"
                   value={informant.dob}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchInformant({ dob: v })}
                   required
                 />

@@ -11,6 +11,7 @@ import {
   Trash2,
   Hash,
 } from "lucide-react";
+import { LocationFields, DateField } from "./formFields";
 
 /*
  * Family Book (Household Registration) — follows the PRD §10.
@@ -35,14 +36,6 @@ const STEPS = [
   { id: 1, label: "Household", subtitle: "Cover and household head" },
   { id: 2, label: "Members", subtitle: "People registered in the household" },
   { id: 3, label: "Review", subtitle: "Check and submit the record" },
-];
-
-const PROVINCES = [
-  "Vientiane Capital", "Phongsali", "Luang Namtha", "Oudomxay",
-  "Bokeo", "Luang Prabang", "Houaphan", "Xayabury",
-  "Xieng Khouang", "Vientiane Province", "Borikhamxay", "Khammouane",
-  "Savannakhet", "Salavan", "Xekong", "Champasak",
-  "Attapeu", "Xaysomboune",
 ];
 
 const GENDERS = ["Female", "Male"];
@@ -386,29 +379,12 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
               </div>
 
               <SectionLabel>Address</SectionLabel>
-              <div className="grid grid-cols-2 gap-3">
-                <InputField
-                  label="Village"
-                  value={head.village}
-                  placeholder="Ban..."
-                  onChange={(v) => patchHead({ village: v })}
-                  required
-                />
-                <InputField
-                  label="District"
-                  value={head.district}
-                  placeholder="Muang..."
-                  onChange={(v) => patchHead({ district: v })}
-                  required
-                />
-              </div>
-              <SelectField
-                label="Province / Capital"
-                value={head.province}
-                options={PROVINCES}
-                placeholder="Select province..."
-                onChange={(v) => patchHead({ province: v })}
+              <LocationFields
+                province={head.province}
+                district={head.district}
+                village={head.village}
                 required
+                onChange={(p) => patchHead(p)}
               />
 
               <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-100">
@@ -476,10 +452,9 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                         onChange={(v) => patchMember(i, { gender: v })}
                         required
                       />
-                      <InputField
+                      <DateField
                         label="Date of Birth"
                         value={m.dob}
-                        placeholder="DD/MM/YYYY"
                         onChange={(v) => patchMember(i, { dob: v })}
                         required
                       />

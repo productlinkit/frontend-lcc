@@ -11,6 +11,7 @@ import {
   Users,
   Info,
 } from "lucide-react";
+import { LocationFields, DateField } from "./formFields";
 
 /*
  * Birth Declaration — follows the PRD §6 (Birth Declaration Form, ໃບແຈ້ງເກີດ,
@@ -95,14 +96,6 @@ const STEPS = [
   { id: 4, label: "Father", subtitle: "Father's particulars" },
   { id: 5, label: "Informant", subtitle: "Reporter of the birth" },
   { id: 6, label: "Review", subtitle: "Check and submit your declaration" },
-];
-
-const PROVINCES = [
-  "Vientiane Capital", "Phongsali", "Luang Namtha", "Oudomxay",
-  "Bokeo", "Luang Prabang", "Houaphan", "Xayabury",
-  "Xieng Khouang", "Vientiane Province", "Borikhamxay", "Khammouane",
-  "Savannakhet", "Salavan", "Xekong", "Champasak",
-  "Attapeu", "Xaysomboune",
 ];
 
 const GENDERS = ["Female", "Male"];
@@ -230,28 +223,18 @@ function AddressFields({
           onChange={(v) => onChange({ addrHouseNo: v })}
         />
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <InputField
-          label="Village"
-          value={village}
-          placeholder="Ban..."
-          onChange={(v) => onChange({ addrVillage: v })}
-          required
-        />
-        <InputField
-          label="District"
-          value={district}
-          placeholder="Muang..."
-          onChange={(v) => onChange({ addrDistrict: v })}
-        />
-      </div>
-      <SelectField
-        label="Province / Capital"
-        value={province}
-        options={PROVINCES}
-        placeholder="Select province..."
-        onChange={(v) => onChange({ addrProvince: v })}
+      <LocationFields
+        province={province}
+        district={district}
+        village={village}
         required
+        onChange={(p) =>
+          onChange({
+            ...(p.province !== undefined ? { addrProvince: p.province } : {}),
+            ...(p.district !== undefined ? { addrDistrict: p.district } : {}),
+            ...(p.village !== undefined ? { addrVillage: p.village } : {}),
+          })
+        }
       />
     </>
   );
@@ -273,10 +256,9 @@ function ParentSection({
         required
       />
       <div className="grid grid-cols-2 gap-3">
-        <InputField
+        <DateField
           label="Date of Birth"
           value={value.dob}
-          placeholder="DD/MM/YYYY"
           onChange={(v) => onChange({ dob: v })}
           required
         />
@@ -579,27 +561,12 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 </span>
               </div>
 
-              <SelectField
-                label="Province / Capital City"
-                value={header.province}
-                options={PROVINCES}
-                placeholder="Select province..."
-                onChange={(v) => setHeader((h) => ({ ...h, province: v }))}
+              <LocationFields
+                province={header.province}
+                district={header.district}
+                village={header.village}
                 required
-              />
-              <InputField
-                label="District"
-                value={header.district}
-                placeholder="e.g. Chanthabouly"
-                onChange={(v) => setHeader((h) => ({ ...h, district: v }))}
-                required
-              />
-              <InputField
-                label="Village"
-                value={header.village}
-                placeholder="Village issuing the declaration"
-                onChange={(v) => setHeader((h) => ({ ...h, village: v }))}
-                required
+                onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
@@ -640,10 +607,9 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                   onChange={(v) => patchChild({ gender: v })}
                   required
                 />
-                <InputField
+                <DateField
                   label="Date of Birth"
                   value={child.dob}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchChild({ dob: v })}
                   required
                 />
@@ -715,37 +681,25 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
               />
 
               <SectionLabel>Place of birth</SectionLabel>
-              <div className="grid grid-cols-2 gap-3">
-                <InputField
-                  label="Village"
-                  value={child.pobVillage}
-                  placeholder="Ban..."
-                  onChange={(v) => patchChild({ pobVillage: v })}
-                  required
-                />
-                <InputField
-                  label="District / City"
-                  value={child.pobDistrict}
-                  placeholder="Muang..."
-                  onChange={(v) => patchChild({ pobDistrict: v })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <SelectField
-                  label="Province / Capital"
-                  value={child.pobProvince}
-                  options={PROVINCES}
-                  placeholder="Select..."
-                  onChange={(v) => patchChild({ pobProvince: v })}
-                  required
-                />
-                <InputField
-                  label="Country"
-                  value={child.pobCountry}
-                  placeholder="Country"
-                  onChange={(v) => patchChild({ pobCountry: v })}
-                />
-              </div>
+              <LocationFields
+                province={child.pobProvince}
+                district={child.pobDistrict}
+                village={child.pobVillage}
+                required
+                onChange={(p) =>
+                  patchChild({
+                    ...(p.province !== undefined ? { pobProvince: p.province } : {}),
+                    ...(p.district !== undefined ? { pobDistrict: p.district } : {}),
+                    ...(p.village !== undefined ? { pobVillage: p.village } : {}),
+                  })
+                }
+              />
+              <InputField
+                label="Country"
+                value={child.pobCountry}
+                placeholder="Country"
+                onChange={(v) => patchChild({ pobCountry: v })}
+              />
 
               <SectionLabel>Current address</SectionLabel>
               <AddressFields
@@ -879,10 +833,9 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 required
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <DateField
                   label="Date of Birth"
                   value={informant.dob}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchInformant({ dob: v })}
                   required
                 />

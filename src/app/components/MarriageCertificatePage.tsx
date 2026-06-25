@@ -14,6 +14,7 @@ import {
   Globe2,
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
+import { LocationFields, DateField } from "./formFields";
 import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
 
 /*
@@ -60,14 +61,6 @@ const STEPS = [
   { id: 5, label: "Registration", subtitle: "Date, place and witnesses" },
   { id: 6, label: "Review", subtitle: "Check your application" },
   { id: 7, label: "Payment", subtitle: "Service fee" },
-];
-
-const PROVINCES = [
-  "Vientiane Capital", "Phongsali", "Luang Namtha", "Oudomxay",
-  "Bokeo", "Luang Prabang", "Houaphan", "Xayabury",
-  "Xieng Khouang", "Vientiane Province", "Borikhamxay", "Khammouane",
-  "Savannakhet", "Salavan", "Xekong", "Champasak",
-  "Attapeu", "Xaysomboune",
 ];
 
 const GENDERS = ["Female", "Male"];
@@ -219,10 +212,9 @@ function SpouseSection({
         required
       />
       <div className="grid grid-cols-2 gap-3">
-        <InputField
+        <DateField
           label="Date of Birth"
           value={value.dob}
-          placeholder="DD/MM/YYYY"
           onChange={(v) => onChange({ dob: v })}
           required
         />
@@ -258,28 +250,18 @@ function SpouseSection({
         placeholder="House number"
         onChange={(v) => onChange({ addrHouseNo: v })}
       />
-      <div className="grid grid-cols-2 gap-3">
-        <InputField
-          label="Village"
-          value={value.addrVillage}
-          placeholder="Ban..."
-          onChange={(v) => onChange({ addrVillage: v })}
-          required
-        />
-        <InputField
-          label="District"
-          value={value.addrDistrict}
-          placeholder="Muang..."
-          onChange={(v) => onChange({ addrDistrict: v })}
-        />
-      </div>
-      <SelectField
-        label="Province / Capital"
-        value={value.addrProvince}
-        options={PROVINCES}
-        placeholder="Select province..."
-        onChange={(v) => onChange({ addrProvince: v })}
+      <LocationFields
+        province={value.addrProvince}
+        district={value.addrDistrict}
+        village={value.addrVillage}
         required
+        onChange={(p) =>
+          onChange({
+            ...(p.province !== undefined ? { addrProvince: p.province } : {}),
+            ...(p.district !== undefined ? { addrDistrict: p.district } : {}),
+            ...(p.village !== undefined ? { addrVillage: p.village } : {}),
+          })
+        }
       />
       <InputField
         label="Residence Certificate Ref."
@@ -605,27 +587,12 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
                 </span>
               </div>
 
-              <SelectField
-                label="Province / Capital"
-                value={header.province}
-                options={PROVINCES}
-                placeholder="Select province..."
-                onChange={(v) => setHeader((h) => ({ ...h, province: v }))}
+              <LocationFields
+                province={header.province}
+                district={header.district}
+                village={header.village}
                 required
-              />
-              <InputField
-                label="District"
-                value={header.district}
-                placeholder="e.g. Chanthabouly"
-                onChange={(v) => setHeader((h) => ({ ...h, district: v }))}
-                required
-              />
-              <InputField
-                label="Village"
-                value={header.village}
-                placeholder="Village whose chief certifies the application"
-                onChange={(v) => setHeader((h) => ({ ...h, village: v }))}
-                required
+                onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
@@ -702,10 +669,9 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
           {step === 5 && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <DateField
                   label="Date of Marriage"
                   value={reg.dateOfMarriage}
-                  placeholder="DD/MM/YYYY"
                   onChange={(v) => patchReg({ dateOfMarriage: v })}
                   required
                 />
