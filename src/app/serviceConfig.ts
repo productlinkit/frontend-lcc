@@ -35,7 +35,7 @@ export function formatLak(n: number | null, lang: Lang = "en"): string {
 export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   resident: {
     fee: 20000, // PRD §5.1
-    processingTime: { en: "Same day (target)", lo: "ພາຍໃນມື້ດຽວ (ເປົ້າໝາຍ)" },
+    processingTime: { en: "Same day (target)", lo: "ໄດ້ຮັບພາຍໃນມື້ດຽວກັນ (ຄາດໝາຍ)" },
     requiredDocs: [
       { en: "National ID card or passport", lo: "ບັດປະຈຳຕົວ ຫຼື ໜັງສືຜ່ານແດນ" },
       { en: "Family book", lo: "ປຶ້ມສຳມະໂນຄົວ" },

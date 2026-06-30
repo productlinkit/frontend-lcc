@@ -239,7 +239,7 @@ export const birth = ns({
     // Step 1 — Header
     legalBasisTitle: "ພື້ນຖານທາງກົດໝາຍ",
     legalBasisText:
-      "ອີງຕາມກົດໝາຍວ່າດ້ວຍຄອບຄົວ ສະບັບເລກທີ 44/ສພຊ, ລົງວັນທີ 14/06/2018. ວັນທີແຈ້ງຈະຖືກກຳນົດອັດຕະໂນມັດເມື່ອຍື່ນ.",
+      "ອີງຕາມກົດໝາຍວ່າດ້ວຍຄອບຄົວ ສະບັບເລກທີ 44/ສພຊ, ລົງວັນທີ 14/06/2018. ວັນທີແຈ້ງຈະຖືກກຳນົດອັດຕະໂນມັດເມື່ອຍື່ນຄຳແຈ້ງ.",
 
     // Step 2 — The Child
     childUinNote: "ເລກປະຈຳຕົວເອກະລັກ (UIN) ຈະຖືກກຳນົດໃຫ້ເດັກເມື່ອລົງທະບຽນ.",
@@ -268,7 +268,7 @@ export const birth = ns({
     heightPlaceholder: "ຕົວຢ່າງ 50",
     bloodTypeLabel: "ກຸ່ມເລືອດ",
     deliveryModeLabel: "ວິທີການເກີດ",
-    assistedByLabel: "ຜູ້ຊ່ວຍເກີດ",
+    assistedByLabel: "ຜູ້ຊ່ວຍການເກີດ",
     assistedByPlaceholder: "ຜະດຸງຄັນ / ແພດ",
     fingerprintLabel: "ລະຫັດລາຍນິ້ວມື",
     fingerprintPlaceholder: "ລະຫັດຊີວະມິຕິ",
@@ -307,7 +307,7 @@ export const birth = ns({
 
     // Step 6 — Review
     reviewWarning:
-      "ກະລຸນາກວດຄືນຄຳແຈ້ງກ່ອນຍື່ນ. ນາຍບ້ານ, ຜູ້ຊ່ວຍເກີດ (ຖ້າມີ) ແລະ ຜູ້ແຈ້ງ ຈະເຊັນໃບແຈ້ງຢູ່ຫ້ອງການບ້ານ.",
+      "ກະລຸນາກວດຄືນຄຳແຈ້ງຂອງທ່ານກ່ອນຍື່ນ. ນາຍບ້ານ, ຜູ້ຊ່ວຍການເກີດ (ຖ້າມີ) ແລະ ຜູ້ແຈ້ງ ຈະຕ້ອງໄດ້ເຊັນໃບແຈ້ງຢູ່ຫ້ອງການບ້ານ.",
     reviewProvinceDistrictVillage: "ແຂວງ / ເມືອງ / ບ້ານ",
     reviewName: "ຊື່",
     reviewGenderDob: "ເພດ / ວັນເກີດ",

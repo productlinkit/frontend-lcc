@@ -92,7 +92,7 @@ export interface ServiceItem {
 
 export const CATEGORIES: Category[] = [
   { id: "civil", label: "Civil & Population", labelLo: "ພົນລະເມືອງ ແລະ ການທະບຽນ", desc: "ID, certificates & registration", descLo: "ບັດປະຈຳຕົວ, ໃບຢັ້ງຢືນ ແລະ ການຂຶ້ນທະບຽນ", icon: Users, color: "#344EAD", bg: "#EEF2FF" },
-  { id: "immigration", label: "Immigration", labelLo: "ຕຣວດຄົນເຂົ້າ-ອອກເມືອງ", desc: "Passport, visa & travel", descLo: "ໜັງສືຜ່ານແດນ, ວີຊາ ແລະ ການເດີນທາງ", icon: Plane, color: "#0EA5E9", bg: "#E0F2FE" },
+  { id: "immigration", label: "Immigration", labelLo: "ກວດຄົນເຂົ້າ-ອອກເມືອງ", desc: "Passport, visa & travel", descLo: "ໜັງສືຜ່ານແດນ, ວີຊາ ແລະ ການເດີນທາງ", icon: Plane, color: "#0EA5E9", bg: "#E0F2FE" },
   { id: "finance", label: "Finance & Tax", labelLo: "ການເງິນ ແລະ ພາສີ-ອາກອນ", desc: "Tax, payments & permits", descLo: "ອາກອນ, ການຊຳລະ ແລະ ໃບອະນຸຍາດ", icon: Wallet, color: "#16A34A", bg: "#DCFCE7" },
   { id: "health", label: "Health", labelLo: "ສາທາລະນະສຸກ", desc: "Healthcare & insurance", descLo: "ການດູແລສຸຂະພາບ ແລະ ປະກັນໄພ", icon: HeartPulse, color: "#DC2626", bg: "#FEE2E2" },
   { id: "transport", label: "Transport", labelLo: "ການຂົນສົ່ງ", desc: "License & vehicle", descLo: "ໃບຂັບຂີ່ ແລະ ຍານພາຫະນະ", icon: Bus, color: "#F59E0B", bg: "#FEF3C7" },
@@ -138,7 +138,7 @@ export const SERVICES: ServiceItem[] = [
   // Transport
   { id: "driver-license", name: "Driver's License", nameLo: "ໃບຂັບຂີ່", desc: "Apply or renew license", descLo: "ຍື່ນຂໍ ຫຼື ຕໍ່ໃບຂັບຂີ່", icon: Car, category: "transport" },
   { id: "vehicle-reg", name: "Vehicle Registration", nameLo: "ການຂຶ້ນທະບຽນລົດ", desc: "Register a vehicle", descLo: "ຂຶ້ນທະບຽນຍານພາຫະນະ", icon: CarFront, category: "transport" },
-  { id: "road-tax", name: "Road Tax", nameLo: "ອາກອນທາງ", desc: "Pay annual road tax", descLo: "ຊຳລະອາກອນທາງປະຈຳປີ", icon: Route, category: "transport" },
+  { id: "road-tax", name: "Road Tax", nameLo: "ຄ່າທຳນຽມທາງ", desc: "Pay annual road tax", descLo: "ຊຳລະຄ່າທຳນຽມທາງປະຈຳປີ", icon: Route, category: "transport" },
 
   // Business
   { id: "biz-reg", name: "Business Registration", nameLo: "ການຂຶ້ນທະບຽນວິສາຫະກິດ", desc: "Register a new business", descLo: "ຂຶ້ນທະບຽນທຸລະກິດໃໝ່", icon: Store, category: "business" },

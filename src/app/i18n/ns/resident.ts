@@ -202,7 +202,7 @@ export const resident = ns({
 
     // Step 4 — Current Residence
     step4Notice: "ນີ້ແມ່ນທີ່ຢູ່ທີ່ກຳລັງຮັບຮອງ — ບ້ານທີ່ທ່ານອາໄສຢູ່ໃນປັດຈຸບັນ.",
-    currentVillageLabel: "ບ້ານປັດຈຸບັນ",
+    currentVillageLabel: "ບ້ານຢູ່ປັດຈຸບັນ",
     currentVillagePlaceholder: "ຕົວຢ່າງ ບ້ານໂພນໄຊ",
     houseNoLabel: "ເລກທີ່ເຮືອນ",
     houseNoPlaceholder: "ເລກທີ່ເຮືອນ",
@@ -239,11 +239,11 @@ export const resident = ns({
 
     // Success
     successTitle: "ຍື່ນຄຳຮ້ອງສຳເລັດແລ້ວ!",
-    successMessage: "ຄຳຮ້ອງຂໍໃບຢັ້ງຢືນທີ່ຢູ່ອາໄສຂອງທ່ານໄດ້ຮັບແລ້ວ ແລະ ກຳລັງດຳເນີນການ.",
+    successMessage: "ຄຳຮ້ອງຂໍໃບຢັ້ງຢືນທີ່ຢູ່ອາໄສຂອງທ່ານໄດ້ຖຶກບັນທຶກແລ້ວ ແລະ ກຳລັງຢູ່ໃນຂະບວນການດຳເນີນການ.",
     successApplicant: "ຜູ້ຍື່ນຄຳຮ້ອງ",
     successReference: "ເລກອ້າງອີງ",
     successCompletion: "ຄາດວ່າຈະສຳເລັດ",
-    successCompletionValue: "ພາຍໃນມື້ດຽວ (ເປົ້າໝາຍ)",
+    successCompletionValue: "ໄດ້ຮັບພາຍໃນມື້ດຽວກັນ (ຄາດໝາຍ)",
     successStatus: "ສະຖານະ",
     successStatusValue: "ກຳລັງດຳເນີນການ",
     backToHome: "ກັບໄປໜ້າຫຼັກ",
