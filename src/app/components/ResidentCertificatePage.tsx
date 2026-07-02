@@ -13,6 +13,13 @@ import {
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
 import { LocationFields, DateField } from "./formFields";
+import {
+  ValidationProvider,
+  useShowErrors,
+  FieldError,
+  fieldErrorRing,
+  isEmpty,
+} from "./formValidation";
 import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
 
@@ -30,13 +37,15 @@ interface FormData {
   // Supporting documents (§5.1) — captured first; applicant details are read from the ID
   frontId: UploadedFile | null;
   backId: UploadedFile | null;
+  familyBookCover: UploadedFile | null; // M — family book cover page
+  familyBookContents: UploadedFile | null; // M — family book contents page
 
   // Applicant identity
   citizenName: string; // M
   age: string; // M
   occupation: string; // O
   nationality: string; // M
-  picture: UploadedFile | null; // C — applicant 3×4 photo
+  picture: UploadedFile | null; // M — applicant 3×4 photo
 
   // Header / jurisdiction block
   province: string; // M
@@ -63,6 +72,7 @@ interface FormData {
   // Native place + purpose
   nativePlace: string; // O — Native Village / District / Province
   purpose: string; // M — "This certificate is used for"
+  purposeOther: string; // C — free text when purpose is "Other"
 
   // Payment
   payment: PaymentState;
@@ -110,6 +120,7 @@ function InputField({
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric"; maxLength?: number;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -120,8 +131,9 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -132,6 +144,7 @@ function SelectField({
   label: React.ReactNode; value: string; options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -139,7 +152,7 @@ function SelectField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -150,6 +163,7 @@ function SelectField({
           </svg>
         </div>
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -163,6 +177,7 @@ function UploadBox({
 }) {
   const t = useT("resident");
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasError = useShowErrors() && required && !file;
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
@@ -200,7 +215,7 @@ function UploadBox({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className={`w-full ${height} rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center gap-2.5 group`}
+          className={`w-full ${height} rounded-2xl border-2 border-dashed ${hasError ? "border-red-300" : "border-gray-200"} bg-gray-50 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center gap-2.5 group`}
         >
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform" style={{ backgroundColor: "#EEF2FF" }}>
             <Camera className="w-7 h-7" style={{ color: "#344EAD" }} />
@@ -211,6 +226,7 @@ function UploadBox({
           </div>
         </button>
       )}
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -276,6 +292,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   const t = useT("resident");
   const { lang } = useLang();
   const [step, setStep] = useState(1);
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -289,6 +306,8 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   const [form, setForm] = useState<FormData>({
     frontId: null,
     backId: null,
+    familyBookCover: null,
+    familyBookContents: null,
     // Read from the ID at step 1 (left blank until detected)
     citizenName: "",
     age: "",
@@ -311,6 +330,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
     motherName: "",
     nativePlace: "",
     purpose: "",
+    purposeOther: "",
     payment: blankPayment,
   });
 
@@ -373,18 +393,25 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
 
   /* ── Validation — only Mandatory fields block progression ── */
   const canProceed = () => {
-    if (step === 1) return Boolean(form.frontId && form.backId && !detecting);
-    if (step === 2) return Boolean(form.citizenName.trim() && form.age.trim() && form.nationality);
+    if (step === 1)
+      return Boolean(
+        form.frontId && form.backId && form.familyBookCover && form.familyBookContents && !detecting,
+      );
+    if (step === 2) return Boolean(form.citizenName.trim() && form.age.trim() && form.nationality && form.picture);
     if (step === 3)
       return Boolean(
         form.province.trim() &&
         form.district.trim() &&
         form.villageName.trim() &&
-        form.villageChiefName.trim() &&
         form.certifyingJurisdiction.trim()
       );
     if (step === 4) return Boolean(form.currentVillage.trim() && form.houseNo.trim());
-    if (step === 5) return Boolean(form.censusBookNo.trim() && form.purpose);
+    if (step === 5)
+      return Boolean(
+        form.censusBookNo.trim() &&
+        form.purpose &&
+        (form.purpose !== "Other" || form.purposeOther.trim()),
+      );
     if (step === 6) return isPaymentValid(form.payment);
     return true;
   };
@@ -392,11 +419,18 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   const lastStep = STEP_COUNT;
 
   const goBack = () => {
+    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
   const handleNext = () => {
+    // Button stays enabled; tapping an incomplete step reveals inline errors.
+    if (!canProceed()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (step < lastStep) setStep((s) => s + 1);
     else {
       setSubmitting(true);
@@ -454,6 +488,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   }
 
   return (
+    <ValidationProvider showErrors={showErrors}>
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -530,6 +565,23 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                   </div>
                 </div>
               )}
+
+              {/* Family book upload (PRD §5.2 — cover + contents, mandatory) */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-1">
+                {t("familyBookHeading")}
+              </p>
+              <UploadBox
+                label={t("familyBookCoverLabel")}
+                sublabel={t("familyBookSublabel")}
+                file={form.familyBookCover}
+                onChange={(f) => set("familyBookCover", f)}
+              />
+              <UploadBox
+                label={t("familyBookContentsLabel")}
+                sublabel={t("familyBookSublabel")}
+                file={form.familyBookContents}
+                onChange={(f) => set("familyBookContents", f)}
+              />
             </>
           )}
 
@@ -590,7 +642,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 sublabel={t("pictureSublabel")}
                 file={form.picture}
                 onChange={(f) => set("picture", f)}
-                required={false}
+                required
                 height="h-48"
               />
             </>
@@ -619,7 +671,6 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 value={form.villageChiefName}
                 placeholder={t("villageChiefPlaceholder")}
                 onChange={(v) => set("villageChiefName", v)}
-                required
               />
               <InputField
                 label={t("certifyingJurisdictionLabel")}
@@ -733,6 +784,16 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 onChange={(v) => set("purpose", v)}
                 required
               />
+              {form.purpose === "Other" && (
+                <InputField
+                  label={t("purposeOtherLabel")}
+                  value={form.purposeOther}
+                  placeholder={t("purposeOtherPlaceholder")}
+                  onChange={(v) => set("purposeOther", v.slice(0, 100))}
+                  maxLength={100}
+                  required
+                />
+              )}
             </>
           )}
 
@@ -754,11 +815,11 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={!canProceed() || submitting}
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: canProceed() && !submitting ? "#344EAD" : "#C7D2FE",
-              cursor: canProceed() && !submitting ? "pointer" : "not-allowed",
+              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
+              cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
@@ -781,5 +842,6 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
         </div>
       </div>
     </div>
+    </ValidationProvider>
   );
 }

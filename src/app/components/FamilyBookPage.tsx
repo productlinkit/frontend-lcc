@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ChevronLeft,
   ArrowRight,
@@ -10,8 +10,17 @@ import {
   Plus,
   Trash2,
   Hash,
+  Camera,
+  X,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import {
+  ValidationProvider,
+  useShowErrors,
+  FieldError,
+  fieldErrorRing,
+  isEmpty,
+} from "./formValidation";
 import { useT, useLang } from "../i18n";
 import { formatLak } from "../serviceConfig";
 
@@ -24,7 +33,13 @@ import { formatLak } from "../serviceConfig";
  */
 
 /* ─── Types ─── */
+interface UploadedFile {
+  name: string;
+  preview: string | null;
+}
+
 interface Member {
+  photo: UploadedFile | null; // O — member 3×4 photo
   name: string; // M — Name and Surname
   gender: string; // M
   dob: string; // M
@@ -74,8 +89,50 @@ const RELATIONSHIPS = [
 ] as const;
 
 const blankMember: Member = {
-  name: "", gender: "", dob: "", relationship: "", ethnicity: "", nationality: "Lao",
+  photo: null, name: "", gender: "", dob: "", relationship: "", ethnicity: "", nationality: "Lao",
 };
+
+/* Compact optional 3×4 photo picker for a household member. */
+function MemberPhoto({
+  value, onChange, label,
+}: {
+  value: UploadedFile | null; onChange: (f: UploadedFile | null) => void; label: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onChange({ name: picked.name, preview: ev.target?.result as string | null });
+    reader.readAsDataURL(picked);
+  };
+  return (
+    <div className="flex items-center gap-3">
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      {value?.preview ? (
+        <div className="relative">
+          <img src={value.preview} alt="" className="w-16 h-20 object-cover rounded-xl border border-gray-200" />
+          <button
+            type="button"
+            onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ""; }}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 shadow-sm"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="w-16 h-20 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all"
+        >
+          <Camera className="w-5 h-5" />
+        </button>
+      )}
+      <p className="text-xs text-gray-400 leading-relaxed">{label}</p>
+    </div>
+  );
+}
 
 /* ─── Field components ─── */
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -94,6 +151,7 @@ function InputField({
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric";
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -103,8 +161,9 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -116,6 +175,7 @@ function SelectField({
   options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -123,7 +183,7 @@ function SelectField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -134,6 +194,7 @@ function SelectField({
           </svg>
         </div>
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -207,6 +268,7 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
   const t = useT("familyBook");
   const { lang } = useLang();
   const [step, setStep] = useState(1);
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -266,11 +328,18 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
   const lastStep = STEPS.length;
 
   const goBack = () => {
+    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
   const handleNext = () => {
+    // Button stays enabled; tapping an incomplete step reveals inline errors.
+    if (!canProceed()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (step < lastStep) setStep((s) => s + 1);
     else {
       setSubmitting(true);
@@ -328,6 +397,7 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
   }
 
   return (
+    <ValidationProvider showErrors={showErrors}>
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -476,6 +546,11 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
                       )}
                     </div>
 
+                    <MemberPhoto
+                      value={m.photo}
+                      onChange={(f) => patchMember(i, { photo: f })}
+                      label={t("memberPhotoHint")}
+                    />
                     <InputField
                       label={t("nameAndSurname")}
                       value={m.name}
@@ -600,11 +675,11 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={!canProceed() || submitting}
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: canProceed() && !submitting ? "#344EAD" : "#C7D2FE",
-              cursor: canProceed() && !submitting ? "pointer" : "not-allowed",
+              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
+              cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
@@ -627,5 +702,6 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
         </div>
       </div>
     </div>
+    </ValidationProvider>
   );
 }

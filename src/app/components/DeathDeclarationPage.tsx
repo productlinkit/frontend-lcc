@@ -12,6 +12,13 @@ import {
   Info,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import {
+  ValidationProvider,
+  useShowErrors,
+  FieldError,
+  fieldErrorRing,
+  isEmpty,
+} from "./formValidation";
 import { useT, useLang } from "../i18n";
 import { formatLak } from "../serviceConfig";
 
@@ -151,6 +158,7 @@ function InputField({
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric" | "tel" | "email"; maxLength?: number;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -161,8 +169,9 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -173,6 +182,7 @@ function SelectField({
   label: React.ReactNode; value: string; options: string[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -180,7 +190,7 @@ function SelectField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -191,6 +201,7 @@ function SelectField({
           </svg>
         </div>
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -461,6 +472,7 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
   const t = useT("death");
   const { lang } = useLang();
   const [step, setStep] = useState(1);
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -487,7 +499,8 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
     if (step === 2)
       return Boolean(
         deceased.fullName.trim() && deceased.gender && deceased.dob.trim() &&
-        deceased.ethnicity && deceased.nationality && deceased.maritalStatus &&
+        deceased.ethnicity && deceased.nationality &&
+        deceased.ethnicGroup && deceased.religion && deceased.maritalStatus &&
         deceased.addrVillage.trim() && deceased.addrProvince && deceased.censusOrId.trim() &&
         deceased.podVillage.trim() && deceased.podProvince &&
         deceased.dateOfDeath.trim() && deceased.cause &&
@@ -507,11 +520,18 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
   const lastStep = STEPS.length;
 
   const goBack = () => {
+    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
   const handleNext = () => {
+    // Button stays enabled; tapping an incomplete step reveals inline errors.
+    if (!canProceed()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (step < lastStep) setStep((s) => s + 1);
     else {
       setSubmitting(true);
@@ -571,6 +591,7 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
   }
 
   return (
+    <ValidationProvider showErrors={showErrors}>
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -796,6 +817,7 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                   options={ETHNIC_GROUPS}
                   placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ ethnicGroup: v })}
+                  required
                 />
                 <SelectField
                   label={t("religion")}
@@ -803,6 +825,7 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
                   options={RELIGIONS}
                   placeholder={t("phSelect")}
                   onChange={(v) => patchDeceased({ religion: v })}
+                  required
                 />
               </div>
             </>
@@ -999,11 +1022,11 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={!canProceed() || submitting}
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: canProceed() && !submitting ? "#344EAD" : "#C7D2FE",
-              cursor: canProceed() && !submitting ? "pointer" : "not-allowed",
+              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
+              cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
@@ -1026,5 +1049,6 @@ export function DeathDeclarationPage({ onBack }: DeathDeclarationPageProps) {
         </div>
       </div>
     </div>
+    </ValidationProvider>
   );
 }

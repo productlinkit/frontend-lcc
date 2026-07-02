@@ -7,6 +7,7 @@ import {
   type Loc,
 } from "../data/laoDivisions";
 import { useT } from "../i18n";
+import { useShowErrors, FieldError, fieldErrorRing } from "./formValidation";
 
 /*
  * Shared form fields used across the Civil Registration forms:
@@ -25,18 +26,25 @@ export function FieldLabel({ children, required }: { children: React.ReactNode; 
   );
 }
 
-const fieldClass =
-  "w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all";
+const fieldBase =
+  "w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all";
 
 export function DateField({
   label, value, onChange, required,
 }: {
   label: React.ReactNode; value: string; onChange: (v: string) => void; required?: boolean;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && !value;
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
-      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={fieldClass} />
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${fieldBase} ${fieldErrorRing(hasError)}`}
+      />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -61,9 +69,11 @@ export function SearchableSelect({
   loading?: boolean;
 }) {
   const t = useT("fields");
+  const showErrors = useShowErrors();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const hasError = showErrors && Boolean(required) && !value && !disabled;
 
   useEffect(() => {
     if (!open) return;
@@ -90,10 +100,10 @@ export function SearchableSelect({
           type="button"
           disabled={disabled}
           onClick={() => { if (!disabled) { setQuery(""); setOpen((o) => !o); } }}
-          className={`w-full flex items-center justify-between gap-2 border rounded-2xl px-4 py-3.5 text-sm text-left transition-all focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 ${
+          className={`w-full flex items-center justify-between gap-2 border rounded-2xl px-4 py-3.5 text-sm text-left transition-all focus:outline-none focus:ring-2 ${
             disabled
               ? "bg-gray-100 border-gray-200 cursor-not-allowed"
-              : "bg-white border-gray-200"
+              : `bg-white ${fieldErrorRing(hasError)}`
           }`}
         >
           <span className={`truncate ${selected ? "text-gray-800" : "text-gray-400"}`}>
@@ -153,6 +163,7 @@ export function SearchableSelect({
           </div>
         )}
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Scan, Landmark, CreditCard, Lock } from "lucide-react";
 import { formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
+import { useShowErrors, FieldError, fieldErrorRing } from "./formValidation";
 
 /*
  * Reusable payment UI — QR / Bank transfer / Card. Used by every fee-bearing
@@ -113,6 +114,12 @@ interface PaymentSectionProps {
 export function PaymentSection({ amount, serviceName, value, onChange, reference }: PaymentSectionProps) {
   const t = useT("payment");
   const { lang } = useLang();
+  const showErrors = useShowErrors();
+  const bankErr = showErrors && value.method === "bank" && !value.bankName;
+  const numErr = showErrors && value.method === "cc" && value.cardNumber.replace(/\s/g, "").length !== 16;
+  const nameErr = showErrors && value.method === "cc" && value.cardName.trim().length === 0;
+  const expErr = showErrors && value.method === "cc" && value.cardExpiry.length !== 5;
+  const cvvErr = showErrors && value.method === "cc" && value.cardCvv.length !== 3;
   return (
     <div className="space-y-5">
       {/* Summary */}
@@ -186,7 +193,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
               <select
                 value={value.bankName}
                 onChange={(e) => onChange({ bankName: e.target.value })}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+                className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(bankErr)}`}
               >
                 <option value="">{t("chooseBank")}</option>
                 {LAO_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -197,6 +204,7 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
                 </svg>
               </div>
             </div>
+            <FieldError show={bankErr} />
           </div>
           {value.bankName && (
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
@@ -259,8 +267,9 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
               value={value.cardNumber}
               onChange={(e) => onChange({ cardNumber: formatCard(e.target.value) })}
               placeholder="0000 0000 0000 0000"
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+              className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(numErr)}`}
             />
+            <FieldError show={numErr} />
           </div>
           <div>
             <FieldLabel required>{t("cardholderName")}</FieldLabel>
@@ -269,8 +278,9 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
               value={value.cardName}
               onChange={(e) => onChange({ cardName: e.target.value.toUpperCase() })}
               placeholder={t("cardNamePlaceholder")}
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+              className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(nameErr)}`}
             />
+            <FieldError show={nameErr} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -282,8 +292,9 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
                 onChange={(e) => onChange({ cardExpiry: formatExpiry(e.target.value) })}
                 placeholder="MM/YY"
                 maxLength={5}
-                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 font-mono placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+                className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(expErr)}`}
               />
+              <FieldError show={expErr} />
             </div>
             <div>
               <FieldLabel required>{t("cvv")}</FieldLabel>
@@ -294,8 +305,9 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
                 onChange={(e) => onChange({ cardCvv: e.target.value.replace(/\D/g, "").slice(0, 3) })}
                 placeholder="•••"
                 maxLength={3}
-                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+                className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(cvvErr)}`}
               />
+              <FieldError show={cvvErr} />
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">

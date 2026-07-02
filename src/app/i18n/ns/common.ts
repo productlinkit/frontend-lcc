@@ -23,6 +23,8 @@ export const common = ns({
     of: "of",
     done: "Done",
     apply: "Apply Now",
+    fieldRequired: "This field is required",
+    selectRequired: "Please make a selection",
   },
   lo: {
     next: "ຕໍ່ໄປ",
@@ -45,5 +47,7 @@ export const common = ns({
     of: "ຈາກ",
     done: "ສຳເລັດ",
     apply: "ສະໝັກດຽວນີ້",
+    fieldRequired: "ກະລຸນາຕື່ມຂໍ້ມູນໃນຊ່ອງນີ້",
+    selectRequired: "ກະລຸນາເລືອກ",
   },
 });

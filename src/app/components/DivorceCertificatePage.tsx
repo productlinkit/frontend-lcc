@@ -11,20 +11,33 @@ import {
   FileText,
   X,
   CheckCircle2,
+  Link2,
+  FilePlus2,
+  ClipboardList,
+  Gavel,
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
 import { LocationFields, DateField } from "./formFields";
+import {
+  ValidationProvider,
+  useShowErrors,
+  FieldError,
+  fieldErrorRing,
+  isEmpty,
+} from "./formValidation";
 import { SERVICE_CONFIG, getServiceConfig, formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
 
 /*
- * Divorce Certificate — follows the PRD §9. Field set is "derived" (per the PRD)
- * and should be validated against the official divorce registration form.
- * Captured once per spouse (Husband & Wife), plus the divorce basis and
- * registration details. A separate certificate is issued to each spouse.
+ * Divorce Certificate — follows PRD §9. The menu groups two sub-processes:
+ *   A) Divorce Mediation Records — Record of Voluntary Divorce + Division of
+ *      joint property / custody / debts (village), and
+ *   B) Divorce Registration — application + supporting forms (district).
+ * Per FR-11 a voluntary case STARTS by selecting the mediation record by its
+ * reference number (links & pre-fills the spouses), or by creating one first.
+ * A contested divorce instead relies on a final People's Court decree.
+ * Officer artefacts (registrar e-signature) are excluded (back-office).
  * M = Mandatory · C = Conditional · O = Optional · Auto = system-generated.
- *
- * Registrar e-signature (PRD §9.3) is applied in the back-office and is excluded here.
  */
 
 /* ─── Types ─── */
@@ -43,6 +56,37 @@ interface SpouseInfo {
   addrProvince: string; // M
   marriageCertRef: string; // M — existing marriage certificate ref
 }
+
+/* A prior divorce-mediation record the citizen can link to (FR-11). Demo/mock. */
+interface MediationRecord {
+  id: string;
+  husbandName: string;
+  husbandNat: string;
+  wifeName: string;
+  wifeNat: string;
+  province: string;
+  district: string;
+  village: string;
+  date: string;
+  marriageBegan: string;
+}
+
+const MOCK_MEDIATIONS: MediationRecord[] = [
+  {
+    id: "DM-2026-00019",
+    husbandName: "Bounma Keovilay", husbandNat: "Lao",
+    wifeName: "Somchan Vilaphonh", wifeNat: "Lao",
+    province: "Vientiane Capital", district: "Sikhottabong", village: "Ban Sikhai",
+    date: "2026-05-20", marriageBegan: "2015-02-14",
+  },
+  {
+    id: "DM-2026-00023",
+    husbandName: "Phit Sengdao", husbandNat: "Lao",
+    wifeName: "Kongmany Souksavath", wifeNat: "Lao",
+    province: "Savannakhet", district: "Kaysone Phomvihane", village: "Ban Thahae",
+    date: "2026-06-05", marriageBegan: "2012-11-30",
+  },
+];
 
 /* ─── Constants ─── */
 const STEP_IDS = [1, 2, 3, 4, 5, 6] as const;
@@ -88,6 +132,7 @@ function InputField({
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric" | "tel" | "email";
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -97,8 +142,31 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
+      <FieldError show={hasError} />
+    </div>
+  );
+}
+
+function TextAreaField({
+  label, value, placeholder, onChange, required,
+}: {
+  label: React.ReactNode; value: string; placeholder: string;
+  onChange: (v: string) => void; required?: boolean;
+}) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
+  return (
+    <div>
+      <FieldLabel required={required}>{label}</FieldLabel>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className={`w-full bg-white border rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all resize-none ${fieldErrorRing(hasError)}`}
+      />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -110,6 +178,7 @@ function SelectField({
   placeholder: string; onChange: (v: string) => void; required?: boolean;
   optionLabel?: (v: string) => string;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -117,7 +186,7 @@ function SelectField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{optionLabel ? optionLabel(o) : o}</option>)}
@@ -128,6 +197,7 @@ function SelectField({
           </svg>
         </div>
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -149,6 +219,7 @@ function DocUpload({
 }) {
   const t = useT("divorce");
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasError = useShowErrors() && Boolean(required) && !file;
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
@@ -175,7 +246,7 @@ function DocUpload({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all text-left"
+          className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 border-dashed ${hasError ? "border-red-300" : "border-gray-200"} bg-gray-50 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all text-left`}
         >
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#EEF2FF" }}>
             <FileText className="w-5 h-5" style={{ color: "#344EAD" }} />
@@ -186,11 +257,48 @@ function DocUpload({
           </div>
         </button>
       )}
+      <FieldError show={hasError} />
     </div>
   );
 }
 
-/* ─── Spouse section (Husband / Wife share the same structure — PRD §9.2) ─── */
+/* ─── Toggle row (yes/no condition) ─── */
+function ToggleRow({
+  active, onToggle, title, hint,
+}: {
+  active: boolean; onToggle: () => void; title: string; hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl border transition-all text-left"
+      style={{
+        backgroundColor: active ? "#EEF2FF" : "white",
+        borderColor: active ? "#344EAD" : "#E5E7EB",
+      }}
+    >
+      <div className="flex items-start gap-2.5">
+        <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
+        <div>
+          <p className="text-sm font-medium text-gray-800">{title}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{hint}</p>
+        </div>
+      </div>
+      <div
+        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border-2"
+        style={{
+          backgroundColor: active ? "#344EAD" : "transparent",
+          borderColor: active ? "#344EAD" : "#D1D5DB",
+        }}
+      >
+        {active && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+      </div>
+    </button>
+  );
+}
+
+/* ─── Spouse section (Husband / Wife share the same structure — PRD §9.4) ─── */
 function SpouseSection({
   value, onChange,
 }: {
@@ -325,6 +433,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
   const { lang } = useLang();
   const cfg = getServiceConfig("divorce");
   const [step, setStep] = useState(1);
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -333,14 +442,29 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
   const [header, setHeader] = useState({ province: "", district: "", village: "" });
   const [husband, setHusband] = useState<SpouseInfo>(blankSpouse);
   const [wife, setWife] = useState<SpouseInfo>(blankSpouse);
-  const [basis, setBasis] = useState({
-    divorceType: "",
-    dateOfDivorce: "",
-    placeOfRegistration: "",
-    custodyRef: "",
+
+  // Step 1 — divorce basis
+  const [basis, setBasis] = useState({ divorceType: "", dateOfDivorce: "", placeOfRegistration: "" });
+
+  // Voluntary path — mediation record (FR-11)
+  const [mediationMode, setMediationMode] = useState<"" | "existing" | "new">("");
+  const [linkedMediationId, setLinkedMediationId] = useState("");
+  const [mediation, setMediation] = useState({
+    dateMarriageBegan: "", reasonsHusband: "", reasonsWife: "", outcome: "",
+    propertyDivision: "", debts: "", additionalAssets: "", w1Name: "", w2Name: "",
   });
-  const [minuteOfDivorce, setMinuteOfDivorce] = useState<DocFile | null>(null);
+  const [hasChildren, setHasChildren] = useState(false);
+  const [children, setChildren] = useState({ list: "", custody: "" });
+
+  // Contested path — People's Court decree
+  const [court, setCourt] = useState({ name: "", decisionDate: "" });
   const [courtDecision, setCourtDecision] = useState<DocFile | null>(null);
+
+  // Step 4 — supporting documents
+  const [guaranteeCert, setGuaranteeCert] = useState<DocFile | null>(null);
+  const [householdBook, setHouseholdBook] = useState<DocFile | null>(null);
+  const [photos, setPhotos] = useState<DocFile | null>(null);
+
   const [payment, setPayment] = useState<PaymentState>(blankPayment);
 
   const fee = SERVICE_CONFIG.divorce.fee ?? 0;
@@ -348,6 +472,24 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
   const patchHusband = (patch: Partial<SpouseInfo>) => setHusband((p) => ({ ...p, ...patch }));
   const patchWife = (patch: Partial<SpouseInfo>) => setWife((p) => ({ ...p, ...patch }));
   const patchBasis = (patch: Partial<typeof basis>) => setBasis((p) => ({ ...p, ...patch }));
+  const patchMediation = (patch: Partial<typeof mediation>) => setMediation((p) => ({ ...p, ...patch }));
+  const patchCourt = (patch: Partial<typeof court>) => setCourt((p) => ({ ...p, ...patch }));
+
+  const linkedRecord = MOCK_MEDIATIONS.find((m) => m.id === linkedMediationId) ?? null;
+
+  /* Link an existing mediation record → pre-fill header + spouses (FR-11). */
+  const selectExisting = (rec: MediationRecord) => {
+    setLinkedMediationId(rec.id);
+    setHeader({ province: rec.province, district: rec.district, village: rec.village });
+    patchHusband({ fullName: rec.husbandName, nationality: rec.husbandNat });
+    patchWife({ fullName: rec.wifeName, nationality: rec.wifeNat });
+    setMediation((m) => ({ ...m, dateMarriageBegan: rec.marriageBegan }));
+  };
+
+  const resetMediation = () => {
+    setMediationMode("");
+    setLinkedMediationId("");
+  };
 
   const spouseValid = (s: SpouseInfo) =>
     Boolean(
@@ -355,17 +497,33 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
       s.addrVillage.trim() && s.addrProvince && s.marriageCertRef.trim()
     );
 
+  const headerValid = () => Boolean(header.province && header.district.trim() && header.village.trim());
+
   /* ── Validation — only Mandatory fields block progression ── */
   const canProceed = () => {
-    if (step === 1)
-      return Boolean(header.province && header.district.trim() && header.village.trim());
+    if (step === 1) {
+      if (!basis.divorceType) return false;
+      if (basis.divorceType === "Voluntary") {
+        if (mediationMode === "existing") return Boolean(linkedMediationId && headerValid());
+        if (mediationMode === "new")
+          return Boolean(
+            headerValid() &&
+            mediation.dateMarriageBegan.trim() && mediation.reasonsHusband.trim() &&
+            mediation.reasonsWife.trim() && mediation.outcome.trim() &&
+            mediation.propertyDivision.trim() &&
+            (!hasChildren || (children.list.trim() && children.custody.trim()))
+          );
+        return false; // must pick existing or create new
+      }
+      // Contested
+      return Boolean(headerValid() && courtDecision && court.name.trim() && court.decisionDate.trim());
+    }
     if (step === 2) return spouseValid(husband);
     if (step === 3) return spouseValid(wife);
     if (step === 4)
       return Boolean(
-        basis.divorceType && basis.dateOfDivorce.trim() && basis.placeOfRegistration.trim() &&
-        (basis.divorceType !== "Voluntary" || minuteOfDivorce) &&
-        (basis.divorceType !== "Contested" || courtDecision)
+        basis.dateOfDivorce.trim() && basis.placeOfRegistration.trim() &&
+        guaranteeCert && householdBook && photos
       );
     if (step === 6) return isPaymentValid(payment);
     return true;
@@ -374,17 +532,27 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
   const lastStep = STEP_COUNT;
 
   const goBack = () => {
+    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
   const handleNext = () => {
+    // Button stays enabled; tapping an incomplete step reveals inline errors.
+    if (!canProceed()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (step < lastStep) setStep((s) => s + 1);
     else {
       setSubmitting(true);
       setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 2200);
     }
   };
+
+  const isVoluntary = basis.divorceType === "Voluntary";
+  const isContested = basis.divorceType === "Contested";
 
   /* ── Success ── */
   if (submitted) {
@@ -437,6 +605,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
   }
 
   return (
+    <ValidationProvider showErrors={showErrors}>
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -465,34 +634,306 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
 
           <StepHeader step={step} />
 
-          {/* Step 1 — Header */}
+          {/* Step 1 — Divorce basis (type + mediation record / court decree) */}
           {step === 1 && (
             <>
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("documentNo")}</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{documentNo}</p>
-                </div>
-                <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  {t("autoGenerated")}
-                </span>
-              </div>
-
-              <LocationFields
-                province={header.province}
-                district={header.district}
-                village={header.village}
-                villageLabel={t("villageLabel")}
+              <SelectField
+                label={t("divorceType")}
+                value={basis.divorceType}
+                options={DIVORCE_TYPES}
+                placeholder={t("selectPlaceholder")}
+                optionLabel={(o) => t(DIVORCE_TYPE_KEY[o] ?? "empty")}
+                onChange={(v) => { patchBasis({ divorceType: v }); resetMediation(); }}
                 required
-                onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
               />
 
-              <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
-                <HeartCrack className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
-                <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
-                  {t("jurisdictionNote")}
-                </p>
-              </div>
+              {!basis.divorceType && (
+                <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                  <HeartCrack className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
+                  <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
+                    {t("basisTypeNote")}
+                  </p>
+                </div>
+              )}
+
+              {/* Voluntary → mediation-record chooser (FR-11) */}
+              {isVoluntary && mediationMode === "" && (
+                <>
+                  <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
+                    <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
+                      {t("mediationChooseNote")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMediationMode("existing")}
+                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-gray-200 bg-white hover:border-[#344EAD]/40 hover:bg-blue-50/40 transition-all text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#EEF2FF" }}>
+                      <Link2 className="w-5 h-5" style={{ color: "#344EAD" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{t("mediationSelectExisting")}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t("mediationSelectExistingHint")}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediationMode("new")}
+                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-gray-200 bg-white hover:border-[#344EAD]/40 hover:bg-blue-50/40 transition-all text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#EEF2FF" }}>
+                      <FilePlus2 className="w-5 h-5" style={{ color: "#344EAD" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{t("mediationCreateNew")}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t("mediationCreateNewHint")}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  </button>
+                  {showErrors && <FieldError show message={t("mediationChooseRequired")} />}
+                </>
+              )}
+
+              {/* Voluntary existing → pick then show linked summary */}
+              {isVoluntary && mediationMode === "existing" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={resetMediation}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> {t("mediationBack")}
+                  </button>
+
+                  {!linkedRecord ? (
+                    <>
+                      <SectionLabel>{t("mediationPickTitle")}</SectionLabel>
+                      {MOCK_MEDIATIONS.map((rec) => (
+                        <button
+                          key={rec.id}
+                          type="button"
+                          onClick={() => selectExisting(rec)}
+                          className="w-full text-left p-4 rounded-2xl border border-gray-200 bg-white hover:border-[#344EAD]/40 hover:bg-blue-50/40 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold text-gray-800">{rec.husbandName} &amp; {rec.wifeName}</span>
+                            <span className="text-[11px] font-mono text-gray-400">{rec.id}</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">{rec.village}, {rec.district} · {rec.date}</p>
+                        </button>
+                      ))}
+                      {showErrors && <FieldError show message={t("mediationPickRequired")} />}
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-2xl border-2 border-green-300 bg-green-50 p-4 space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <p className="text-sm font-semibold text-green-700">{t("mediationLinkedTitle")}</p>
+                        </div>
+                        {[
+                          [t("mediationRecordNo"), linkedRecord.id],
+                          [t("mediationCouple"), `${linkedRecord.husbandName} & ${linkedRecord.wifeName}`],
+                          [t("mediationWhere"), `${linkedRecord.village}, ${linkedRecord.district}, ${linkedRecord.province}`],
+                          [t("mediationDate"), linkedRecord.date],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex items-start justify-between gap-3">
+                            <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
+                            <span className="text-xs font-medium text-gray-800 text-right">{value}</span>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setLinkedMediationId("")}
+                          className="text-xs font-medium text-[#344EAD] hover:underline pt-1"
+                        >
+                          {t("mediationChange")}
+                        </button>
+                      </div>
+                      <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                        <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
+                        <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
+                          {t("mediationPrefillNote")}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Voluntary new → capture the Record of Voluntary Divorce + division */}
+              {isVoluntary && mediationMode === "new" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={resetMediation}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> {t("mediationBack")}
+                  </button>
+
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
+                    <div>
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("mediationNoLabel")}</p>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">DM-2026-00031</p>
+                    </div>
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                      {t("autoGenerated")}
+                    </span>
+                  </div>
+
+                  <LocationFields
+                    province={header.province}
+                    district={header.district}
+                    village={header.village}
+                    villageLabel={t("villageLabel")}
+                    required
+                    onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
+                  />
+
+                  <DateField
+                    label={t("dateMarriageBegan")}
+                    value={mediation.dateMarriageBegan}
+                    onChange={(v) => patchMediation({ dateMarriageBegan: v })}
+                    required
+                  />
+                  <TextAreaField
+                    label={t("reasonsHusband")}
+                    value={mediation.reasonsHusband}
+                    placeholder={t("reasonsPlaceholder")}
+                    onChange={(v) => patchMediation({ reasonsHusband: v })}
+                    required
+                  />
+                  <TextAreaField
+                    label={t("reasonsWife")}
+                    value={mediation.reasonsWife}
+                    placeholder={t("reasonsPlaceholder")}
+                    onChange={(v) => patchMediation({ reasonsWife: v })}
+                    required
+                  />
+                  <TextAreaField
+                    label={t("mediationOutcome")}
+                    value={mediation.outcome}
+                    placeholder={t("mediationOutcomePlaceholder")}
+                    onChange={(v) => patchMediation({ outcome: v })}
+                    required
+                  />
+
+                  <SectionLabel>{t("divisionSection")}</SectionLabel>
+                  <TextAreaField
+                    label={t("propertyDivision")}
+                    value={mediation.propertyDivision}
+                    placeholder={t("propertyDivisionPlaceholder")}
+                    onChange={(v) => patchMediation({ propertyDivision: v })}
+                    required
+                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <InputField
+                      label={t("debts")}
+                      value={mediation.debts}
+                      placeholder={t("debtsPlaceholder")}
+                      onChange={(v) => patchMediation({ debts: v })}
+                    />
+                    <InputField
+                      label={t("additionalAssets")}
+                      value={mediation.additionalAssets}
+                      placeholder={t("additionalAssetsPlaceholder")}
+                      onChange={(v) => patchMediation({ additionalAssets: v })}
+                    />
+                  </div>
+
+                  <ToggleRow
+                    active={hasChildren}
+                    onToggle={() => setHasChildren((v) => !v)}
+                    title={t("hasChildren")}
+                    hint={t("hasChildrenHint")}
+                  />
+                  {hasChildren && (
+                    <>
+                      <TextAreaField
+                        label={t("childrenList")}
+                        value={children.list}
+                        placeholder={t("childrenListPlaceholder")}
+                        onChange={(v) => setChildren((c) => ({ ...c, list: v }))}
+                        required
+                      />
+                      <TextAreaField
+                        label={t("custodyAgreement")}
+                        value={children.custody}
+                        placeholder={t("custodyAgreementPlaceholder")}
+                        onChange={(v) => setChildren((c) => ({ ...c, custody: v }))}
+                        required
+                      />
+                    </>
+                  )}
+
+                  <SectionLabel>{t("mediationWitnesses")}</SectionLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <InputField
+                      label={t("witnessName")}
+                      value={mediation.w1Name}
+                      placeholder={t("witnessNamePlaceholder")}
+                      onChange={(v) => patchMediation({ w1Name: v })}
+                    />
+                    <InputField
+                      label={t("witnessName")}
+                      value={mediation.w2Name}
+                      placeholder={t("witnessNamePlaceholder")}
+                      onChange={(v) => patchMediation({ w2Name: v })}
+                    />
+                  </div>
+
+                  <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                    <HeartCrack className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#344EAD" }} />
+                    <p className="text-xs leading-relaxed" style={{ color: "#344EAD" }}>
+                      {t("mediationNewNote")}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Contested → People's Court decree */}
+              {isContested && (
+                <>
+                  <LocationFields
+                    province={header.province}
+                    district={header.district}
+                    village={header.village}
+                    villageLabel={t("villageLabel")}
+                    required
+                    onChange={(p) => setHeader((h) => ({ ...h, ...p }))}
+                  />
+                  <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                    <Gavel className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      {t("contestedNote")}
+                    </p>
+                  </div>
+                  <InputField
+                    label={t("courtName")}
+                    value={court.name}
+                    placeholder={t("courtNamePlaceholder")}
+                    onChange={(v) => patchCourt({ name: v })}
+                    required
+                  />
+                  <DateField
+                    label={t("courtDecisionDate")}
+                    value={court.decisionDate}
+                    onChange={(v) => patchCourt({ decisionDate: v })}
+                    required
+                  />
+                  <DocUpload
+                    label={t("courtDecisionLabel")}
+                    file={courtDecision}
+                    onChange={setCourtDecision}
+                    required
+                    hint={t("courtDecisionHint")}
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -522,38 +963,9 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
             </>
           )}
 
-          {/* Step 4 — Divorce basis & registration */}
+          {/* Step 4 — Registration & documents */}
           {step === 4 && (
             <>
-              <SelectField
-                label={t("divorceType")}
-                value={basis.divorceType}
-                options={DIVORCE_TYPES}
-                placeholder={t("selectPlaceholder")}
-                optionLabel={(o) => t(DIVORCE_TYPE_KEY[o] ?? "empty")}
-                onChange={(v) => patchBasis({ divorceType: v })}
-                required
-              />
-
-              {basis.divorceType === "Voluntary" && (
-                <DocUpload
-                  label={t("minuteLabel")}
-                  file={minuteOfDivorce}
-                  onChange={setMinuteOfDivorce}
-                  required
-                  hint={t("minuteHint")}
-                />
-              )}
-              {basis.divorceType === "Contested" && (
-                <DocUpload
-                  label={t("courtDecisionLabel")}
-                  file={courtDecision}
-                  onChange={setCourtDecision}
-                  required
-                  hint={t("courtDecisionHint")}
-                />
-              )}
-
               <div className="grid grid-cols-2 gap-3">
                 <DateField
                   label={t("dateOfDivorce")}
@@ -570,11 +982,32 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
                 />
               </div>
 
-              <InputField
-                label={t("custodyRef")}
-                value={basis.custodyRef}
-                placeholder={t("custodyRefPlaceholder")}
-                onChange={(v) => patchBasis({ custodyRef: v })}
+              <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                <ClipboardList className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  {t("registrationDocsNote")}
+                </p>
+              </div>
+
+              <DocUpload
+                label={t("householdBook")}
+                file={householdBook}
+                onChange={setHouseholdBook}
+                required
+              />
+              <DocUpload
+                label={t("guaranteeCert")}
+                file={guaranteeCert}
+                onChange={setGuaranteeCert}
+                required
+                hint={t("guaranteeCertHint")}
+              />
+              <DocUpload
+                label={t("photos3x4")}
+                file={photos}
+                onChange={setPhotos}
+                required
+                hint={t("photos3x4Hint")}
               />
 
               <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-gray-100 border border-gray-200">
@@ -597,6 +1030,18 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
               </div>
 
               {[
+                {
+                  title: t("reviewBasis"),
+                  rows: [
+                    [t("reviewType"), basis.divorceType ? t(DIVORCE_TYPE_KEY[basis.divorceType] ?? "empty") : t("empty")],
+                    [
+                      isContested ? t("reviewCourtDecision") : t("mediationRecordNo"),
+                      isContested
+                        ? (court.name || t("empty"))
+                        : (linkedRecord ? linkedRecord.id : "DM-2026-00031"),
+                    ],
+                  ],
+                },
                 {
                   title: t("reviewHeader"),
                   rows: [
@@ -621,12 +1066,10 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
                   ],
                 },
                 {
-                  title: t("reviewDivorce"),
+                  title: t("reviewRegistration"),
                   rows: [
-                    [t("reviewType"), basis.divorceType ? t(DIVORCE_TYPE_KEY[basis.divorceType] ?? "empty") : t("empty")],
                     [t("reviewDate"), basis.dateOfDivorce || t("empty")],
                     [t("reviewPlace"), basis.placeOfRegistration || t("empty")],
-                    [t("reviewCustody"), basis.custodyRef || t("empty")],
                   ],
                 },
               ].map((card) => (
@@ -661,11 +1104,11 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={!canProceed() || submitting}
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: canProceed() && !submitting ? "#344EAD" : "#C7D2FE",
-              cursor: canProceed() && !submitting ? "pointer" : "not-allowed",
+              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
+              cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
@@ -688,5 +1131,6 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
         </div>
       </div>
     </div>
+    </ValidationProvider>
   );
 }

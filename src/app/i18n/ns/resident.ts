@@ -50,6 +50,10 @@ export const resident = ns({
     frontIdLabel: "ID Card — Front Side",
     backIdLabel: "ID Card — Back Side",
     idSublabel: "Photo or scan • JPG, PNG",
+    familyBookHeading: "Family book",
+    familyBookCoverLabel: "Family Book — cover page",
+    familyBookContentsLabel: "Family Book — contents page",
+    familyBookSublabel: "Clear photo of the page • JPG, PNG",
     readingId: "Reading your ID…",
     detailsDetected: "Details detected",
     detectedSummary: "{name} · Age {age} · {nationality}. Confirm them on the next step.",
@@ -66,7 +70,7 @@ export const resident = ns({
     selectPlaceholder: "Select...",
     occupationLabel: "Occupation (optional)",
     occupationPlaceholder: "Current occupation or profession",
-    pictureLabel: "Picture (3×4) — if applicable",
+    pictureLabel: "Photo (3×4)",
     pictureSublabel: "3×4 cm photo • JPG, PNG",
 
     // Step 3 — Location & Authority
@@ -104,6 +108,8 @@ export const resident = ns({
     purposeHeading: "Purpose",
     purposeLabel: "This certificate is used for",
     purposePlaceholder: "Select purpose...",
+    purposeOtherLabel: "Please specify",
+    purposeOtherPlaceholder: "Specify your purpose (max 100 characters)",
 
     // Step 6 — Payment
     paymentServiceName: "Residence Certificate",
@@ -174,6 +180,10 @@ export const resident = ns({
     frontIdLabel: "ບັດປະຈຳຕົວ — ດ້ານໜ້າ",
     backIdLabel: "ບັດປະຈຳຕົວ — ດ້ານຫຼັງ",
     idSublabel: "ຮູບຖ່າຍ ຫຼື ສະແກນ • JPG, PNG",
+    familyBookHeading: "ປຶ້ມສຳມະໂນຄົວ",
+    familyBookCoverLabel: "ປຶ້ມສຳມະໂນຄົວ — ໜ້າປົກ",
+    familyBookContentsLabel: "ປຶ້ມສຳມະໂນຄົວ — ໜ້າເນື້ອໃນ",
+    familyBookSublabel: "ຮູບໜ້າເອກະສານທີ່ຊັດເຈນ • JPG, PNG",
     readingId: "ກຳລັງອ່ານບັດປະຈຳຕົວຂອງທ່ານ…",
     detailsDetected: "ກວດພົບຂໍ້ມູນແລ້ວ",
     detectedSummary: "{name} · ອາຍຸ {age} · {nationality}. ກະລຸນາຢືນຢັນໃນຂັ້ນຕອນຕໍ່ໄປ.",
@@ -190,7 +200,7 @@ export const resident = ns({
     selectPlaceholder: "ເລືອກ...",
     occupationLabel: "ອາຊີບ (ບໍ່ບັງຄັບ)",
     occupationPlaceholder: "ອາຊີບ ຫຼື ວິຊາຊີບປັດຈຸບັນ",
-    pictureLabel: "ຮູບຖ່າຍ (3×4) — ຖ້າມີ",
+    pictureLabel: "ຮູບຖ່າຍ (3×4)",
     pictureSublabel: "ຮູບຖ່າຍ 3×4 ຊມ • JPG, PNG",
 
     // Step 3 — Location & Authority
@@ -228,6 +238,8 @@ export const resident = ns({
     purposeHeading: "ຈຸດປະສົງ",
     purposeLabel: "ໃບຢັ້ງຢືນນີ້ໃຊ້ສຳລັບ",
     purposePlaceholder: "ເລືອກຈຸດປະສົງ...",
+    purposeOtherLabel: "ກະລຸນາລະບຸ",
+    purposeOtherPlaceholder: "ລະບຸຈຸດປະສົງຂອງທ່ານ (ສູງສຸດ 100 ຕົວອັກສອນ)",
 
     // Step 6 — Payment
     paymentServiceName: "ໃບຢັ້ງຢືນທີ່ຢູ່ອາໄສ",

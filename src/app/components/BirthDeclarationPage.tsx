@@ -12,6 +12,13 @@ import {
   Info,
 } from "lucide-react";
 import { LocationFields, DateField } from "./formFields";
+import {
+  ValidationProvider,
+  useShowErrors,
+  FieldError,
+  fieldErrorRing,
+  isEmpty,
+} from "./formValidation";
 import { useT, useLang } from "../i18n";
 import { formatLak } from "../serviceConfig";
 
@@ -204,6 +211,7 @@ function InputField({
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric" | "tel" | "email"; maxLength?: number;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -214,8 +222,9 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all"
+        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -226,6 +235,7 @@ function SelectField({
   label: React.ReactNode; value: string; options: { value: string; label: string }[];
   placeholder: string; onChange: (v: string) => void; required?: boolean;
 }) {
+  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -233,7 +243,7 @@ function SelectField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20 transition-all pr-10"
+          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -244,6 +254,7 @@ function SelectField({
           </svg>
         </div>
       </div>
+      <FieldError show={hasError} />
     </div>
   );
 }
@@ -258,11 +269,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ─── Reusable address group ─── */
 function AddressFields({
-  houseNo, village, district, province, onChange, withHouseNo = true,
+  houseNo, village, district, province, onChange, withHouseNo = true, required = true,
 }: {
   houseNo: string; village: string; district: string; province: string;
   onChange: (patch: Partial<{ addrHouseNo: string; addrVillage: string; addrDistrict: string; addrProvince: string }>) => void;
-  withHouseNo?: boolean;
+  withHouseNo?: boolean; required?: boolean;
 }) {
   const t = useT("birth");
   return (
@@ -279,7 +290,7 @@ function AddressFields({
         province={province}
         district={district}
         village={village}
-        required
+        required={required}
         onChange={(p) =>
           onChange({
             ...(p.province !== undefined ? { addrProvince: p.province } : {}),
@@ -294,9 +305,9 @@ function AddressFields({
 
 /* ─── Parent section (Mother / Father share the same structure, PRD §6.4) ─── */
 function ParentSection({
-  value, onChange,
+  value, onChange, required = true,
 }: {
-  value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void;
+  value: ParentInfo; onChange: (patch: Partial<ParentInfo>) => void; required?: boolean;
 }) {
   const t = useT("birth");
   const opts = (list: Opt[]) => list.map((o) => ({ value: o.value, label: t(o.labelKey) }));
@@ -307,14 +318,14 @@ function ParentSection({
         value={value.fullName}
         placeholder={t("parentNamePlaceholder")}
         onChange={(v) => onChange({ fullName: v })}
-        required
+        required={required}
       />
       <div className="grid grid-cols-2 gap-3">
         <DateField
           label={t("dobLabel")}
           value={value.dob}
           onChange={(v) => onChange({ dob: v })}
-          required
+          required={required}
         />
         <SelectField
           label={t("maritalStatusLabel")}
@@ -322,7 +333,7 @@ function ParentSection({
           options={opts(MARITAL)}
           placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ maritalStatus: v })}
-          required
+          required={required}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -332,7 +343,7 @@ function ParentSection({
           options={opts(ETHNICITIES)}
           placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ ethnicity: v })}
-          required
+          required={required}
         />
         <SelectField
           label={t("nationalityLabel")}
@@ -340,7 +351,7 @@ function ParentSection({
           options={opts(NATIONALITIES)}
           placeholder={t("selectPlaceholder")}
           onChange={(v) => onChange({ nationality: v })}
-          required
+          required={required}
         />
       </div>
 
@@ -351,6 +362,7 @@ function ParentSection({
         district={value.addrDistrict}
         province={value.addrProvince}
         onChange={onChange}
+        required={required}
       />
 
       <InputField
@@ -358,7 +370,7 @@ function ParentSection({
         value={value.censusOrId}
         placeholder={t("censusOrIdPlaceholder")}
         onChange={(v) => onChange({ censusOrId: v })}
-        required
+        required={required}
       />
 
       <SectionLabel>{t("additionalDetailsSection")}</SectionLabel>
@@ -477,6 +489,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
   const opts = (list: Opt[]) => list.map((o) => ({ value: o.value, label: t(o.labelKey) }));
 
   const [step, setStep] = useState(1);
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -509,6 +522,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
       return Boolean(
         child.fullName.trim() && child.gender && child.dob.trim() && child.birthType &&
         child.birthOrder.trim() && child.ethnicity && child.nationality && child.religion &&
+        child.weight.trim() && child.height.trim() &&
         child.pobProvince && child.pobVillage.trim() &&
         child.addrProvince && child.addrVillage.trim() &&
         (child.birthType !== "Twins" || child.twinName.trim())
@@ -527,11 +541,18 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
   const lastStep = STEP_COUNT;
 
   const goBack = () => {
+    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
   const handleNext = () => {
+    // Button stays enabled; tapping an incomplete step reveals inline errors.
+    if (!canProceed()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (step < lastStep) setStep((s) => s + 1);
     else {
       setSubmitting(true);
@@ -590,6 +611,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
   }
 
   return (
+    <ValidationProvider showErrors={showErrors}>
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -796,6 +818,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                   placeholder={t("weightPlaceholder")}
                   inputMode="numeric"
                   onChange={(v) => patchChild({ weight: v })}
+                  required
                 />
                 <InputField
                   label={t("heightLabel")}
@@ -803,6 +826,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                   placeholder={t("heightPlaceholder")}
                   inputMode="numeric"
                   onChange={(v) => patchChild({ height: v })}
+                  required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -889,7 +913,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                 </div>
               </button>
 
-              {!fatherUnknown && <ParentSection value={father} onChange={patchFather} />}
+              {!fatherUnknown && <ParentSection value={father} onChange={patchFather} required={!fatherUnknown} />}
             </>
           )}
 
@@ -992,6 +1016,29 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
                   onChange={(v) => patchInformant({ fingerprint: v })}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField
+                  label={t("ethnicityLabel")}
+                  value={informant.ethnicity}
+                  options={opts(ETHNICITIES)}
+                  placeholder={t("selectPlaceholder")}
+                  onChange={(v) => patchInformant({ ethnicity: v })}
+                />
+                <SelectField
+                  label={t("ethnicGroupLabel")}
+                  value={informant.ethnicGroup}
+                  options={opts(ETHNIC_GROUPS)}
+                  placeholder={t("selectPlaceholder")}
+                  onChange={(v) => patchInformant({ ethnicGroup: v })}
+                />
+              </div>
+              <SelectField
+                label={t("religionLabel")}
+                value={informant.religion}
+                options={opts(RELIGIONS)}
+                placeholder={t("selectPlaceholder")}
+                onChange={(v) => patchInformant({ religion: v })}
+              />
             </>
           )}
 
@@ -1067,11 +1114,11 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={!canProceed() || submitting}
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: canProceed() && !submitting ? "#344EAD" : "#C7D2FE",
-              cursor: canProceed() && !submitting ? "pointer" : "not-allowed",
+              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
+              cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
@@ -1094,5 +1141,6 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
         </div>
       </div>
     </div>
+    </ValidationProvider>
   );
 }
