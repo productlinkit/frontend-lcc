@@ -473,7 +473,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
 
         {/* Services Section */}
         <div>
-          <div className="flex items-end justify-between gap-3 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-6">
             <div className="min-w-0">
               <h2 className="text-gray-900 font-bold text-2xl lg:text-3xl leading-tight">
                 {t("whatDoYouNeed")}
@@ -618,9 +618,10 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
               <div className="relative max-w-screen-xl mx-auto">
                 <SectionHeader title={t("everyoneTitle")} subtitle={t("everyoneSubtitle")} />
 
+                <div className="px-4 lg:px-8">
                 <div
                   ref={everyoneRef}
-                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 px-4 lg:px-8 [&::-webkit-scrollbar]:hidden"
+                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
                   style={{ scrollbarWidth: "none" }}
                 >
                   {EVERYONE_SERVICES.map((item) => {
@@ -630,7 +631,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                       <button
                         key={item.id}
                         onClick={() => svc.tab && onTabChange(svc.tab)}
-                        className="flex-shrink-0 w-[270px] snap-start bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-left flex flex-col"
+                        className="flex-shrink-0 w-[80%] sm:w-[46%] lg:w-[300px] snap-start bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-left flex flex-col"
                       >
                         <h3 className="text-gray-900 font-semibold text-lg leading-snug">
                           {lang === "lo" ? svc.nameLo : svc.name}
@@ -647,6 +648,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                       </button>
                     );
                   })}
+                </div>
                 </div>
 
                 {/* slider controls */}

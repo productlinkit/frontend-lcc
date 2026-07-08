@@ -49,7 +49,7 @@ export function ServiceCard({
       </p>
 
       <div
-        className="flex items-center justify-between gap-2 mt-4 pt-3 border-t transition-colors duration-200"
+        className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 pt-3 border-t transition-colors duration-200"
         style={{ borderColor: hover ? "rgba(255,255,255,0.22)" : "#F3F4F6" }}
       >
         <span
