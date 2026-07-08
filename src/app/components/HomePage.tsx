@@ -1,20 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search,
   AlertTriangle,
   ChevronRight,
+  ChevronLeft,
   X,
   AlertCircle,
   HelpCircle,
   LayoutGrid,
   Settings2,
   Check,
+  ChevronDown,
 } from "lucide-react";
-import { HeroSlider } from "./HeroSlider";
+import { Hero } from "./Hero";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak } from "../serviceConfig";
+import { GlassIcon } from "./GlassIcon";
+import { ServiceCard } from "./ServiceCard";
 import { useT, useLang } from "../i18n";
+import civilPopulationImg from "../../imports/civil-population.png";
+import immigrationImg from "../../imports/immigration.png";
+import taxPaymentImg from "../../imports/tax-payment.png";
+import landPropertyImg from "../../imports/land-property.png";
+import transportImg from "../../imports/transport.png";
+import socialProtectionImg from "../../imports/social-protection.png";
+import educationImg from "../../imports/education.png";
+import healthImg from "../../imports/health.png";
 
 // Civil Registration — Phase 1 services (per PRD), shown as the default Quick Actions
 const DEFAULT_HOME_SERVICES = [
@@ -28,48 +40,210 @@ const DEFAULT_HOME_SERVICES = [
 
 const STORAGE_KEY = "lcc_home_services";
 
-const NEWS = {
-  en: [
-    {
-      id: 1,
-      date: "10 Apr 2026",
+const newsThumb = (id: string) =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=520&q=70`;
+
+const NEWS_ITEMS = [
+  {
+    id: 1,
+    thumb: newsThumb("1486406146926-c627a92ad1ab"),
+    cat: { en: "System Update", lo: "ອັບເດດລະບົບ" },
+    color: "#344EAD",
+    bg: "#EEF2FF",
+    date: { en: "10 Apr 2026", lo: "10 ເມສາ 2026" },
+    en: {
       title: "New Digital Identity System launching August 2026",
-      desc: "The government announced a new comprehensive digital identity framework",
+      desc: "A comprehensive LaoID framework rolls out nationwide with faster verification.",
     },
-    {
-      id: 2,
-      date: "08 Apr 2026",
-      title: "Simplified process for Resident Certificate applications",
-      desc: "Starting this month, certificates can be fully processed online",
-    },
-    {
-      id: 3,
-      date: "05 Apr 2026",
-      title: "Scheduled maintenance for e-Governance Portal",
-      desc: "The portal will undergo maintenance on Sunday, 12 April",
-    },
-  ],
-  lo: [
-    {
-      id: 1,
-      date: "10 ເມສາ 2026",
+    lo: {
       title: "ລະບົບເອກະລັກດິຈິຕອນໃໝ່ ເລີ່ມໃຊ້ ສິງຫາ 2026",
-      desc: "ລັດຖະບານປະກາດກອບເອກະລັກດິຈິຕອນແບບຄົບວົງຈອນ",
+      desc: "ກອບ LaoID ແບບຄົບວົງຈອນ ເລີ່ມໃຊ້ທົ່ວປະເທດ ພ້ອມການຢືນຢັນທີ່ໄວຂຶ້ນ.",
     },
-    {
-      id: 2,
-      date: "08 ເມສາ 2026",
-      title: "ຂັ້ນຕອນໃໝ່ສຳລັບການຂໍໃບຢັ້ງຢືນທີ່ຢູ່",
-      desc: "ເລີ່ມເດືອນນີ້, ໃບຢັ້ງຢືນສາມາດດຳເນີນການອອນລາຍໄດ້ທັງໝົດ",
+  },
+  {
+    id: 2,
+    thumb: newsThumb("1454165804606-c3d57bc86b40"),
+    cat: { en: "Regulation", lo: "ລະບຽບການ" },
+    color: "#7C3AED",
+    bg: "#EDE9FE",
+    date: { en: "08 Apr 2026", lo: "08 ເມສາ 2026" },
+    en: {
+      title: "Updated Family Registration Law now in effect",
+      desc: "Civil registration procedures are simplified under the revised regulation.",
     },
-    {
-      id: 3,
-      date: "05 ເມສາ 2026",
-      title: "ບຳລຸງຮັກສາລະບົບ e-Governance Portal",
-      desc: "ລະບົບຈະບຳລຸງຮັກສາໃນວັນອາທິດທີ 12 ເມສາ",
+    lo: {
+      title: "ກົດໝາຍທະບຽນຄອບຄົວສະບັບປັບປຸງ ມີຜົນບັງຄັບໃຊ້ແລ້ວ",
+      desc: "ຂັ້ນຕອນການທະບຽນພົນລະເມືອງ ຖືກເຮັດໃຫ້ງ່າຍຂຶ້ນ ຕາມລະບຽບໃໝ່.",
     },
-  ],
-} as const;
+  },
+  {
+    id: 3,
+    thumb: newsThumb("1497366754035-f200968a6e72"),
+    cat: { en: "Announcement", lo: "ປະກາດ" },
+    color: "#F59E0B",
+    bg: "#FEF3C7",
+    date: { en: "05 Apr 2026", lo: "05 ເມສາ 2026" },
+    en: {
+      title: "Scheduled maintenance for the e-Governance Portal",
+      desc: "The portal will be briefly unavailable on Sunday, 12 April for upgrades.",
+    },
+    lo: {
+      title: "ການບຳລຸງຮັກສາລະບົບ e-Governance Portal",
+      desc: "ລະບົບຈະບໍ່ສາມາດໃຊ້ໄດ້ຊົ່ວຄາວ ໃນວັນອາທິດທີ 12 ເມສາ ເພື່ອປັບປຸງ.",
+    },
+  },
+  {
+    id: 4,
+    thumb: newsThumb("1519494026892-80bbd2d6fd0d"),
+    cat: { en: "Service", lo: "ບໍລິການ" },
+    color: "#16A34A",
+    bg: "#DCFCE7",
+    date: { en: "02 Apr 2026", lo: "02 ເມສາ 2026" },
+    en: {
+      title: "Residence Certificates now fully online",
+      desc: "Apply, pay and receive your certificate without visiting an office.",
+    },
+    lo: {
+      title: "ໃບຢັ້ງຢືນທີ່ຢູ່ ສາມາດຂໍອອນລາຍໄດ້ທັງໝົດແລ້ວ",
+      desc: "ຍື່ນຂໍ, ຊຳລະ ແລະ ຮັບໃບຢັ້ງຢືນ ໂດຍບໍ່ຕ້ອງໄປຫ້ອງການ.",
+    },
+  },
+  {
+    id: 5,
+    thumb: newsThumb("1487958449943-2429e8be8625"),
+    cat: { en: "Security", lo: "ຄວາມປອດໄພ" },
+    color: "#DC2626",
+    bg: "#FEE2E2",
+    date: { en: "28 Mar 2026", lo: "28 ມີນາ 2026" },
+    en: {
+      title: "Enable two-factor authentication for your account",
+      desc: "Add an extra layer of protection to keep your identity safe.",
+    },
+    lo: {
+      title: "ເປີດໃຊ້ການຢືນຢັນສອງຊັ້ນ ສຳລັບບັນຊີຂອງທ່ານ",
+      desc: "ເພີ່ມການປົກປ້ອງອີກຊັ້ນ ເພື່ອຮັກສາຄວາມປອດໄພຂອງຕົວຕົນ.",
+    },
+  },
+  {
+    id: 6,
+    thumb: newsThumb("1541339907198-e08756dedf3f"),
+    cat: { en: "Event", lo: "ກິດຈະກຳ" },
+    color: "#0EA5E9",
+    bg: "#E0F2FE",
+    date: { en: "24 Mar 2026", lo: "24 ມີນາ 2026" },
+    en: {
+      title: "Digital Government Week 2026 opens in Vientiane",
+      desc: "Join workshops and demos showcasing new public digital services.",
+    },
+    lo: {
+      title: "ອາທິດລັດຖະບານດິຈິຕອນ 2026 ເປີດຂຶ້ນທີ່ ວຽງຈັນ",
+      desc: "ຮ່ວມເຝິກອົບຮົມ ແລະ ການສາທິດ ການບໍລິການສາທາລະນະດິຈິຕອນໃໝ່.",
+    },
+  },
+] as const;
+
+// Quantitative highlights shown below the service list
+const STATS = [
+  { value: `${SERVICES.length}+`, label: { en: "Digital services", lo: "ບໍລິການດິຈິຕອນ" } },
+  { value: "18", label: { en: "Provinces covered", lo: "ແຂວງທົ່ວປະເທດ" } },
+  { value: "24/7", label: { en: "Online access", lo: "ເຂົ້າໃຊ້ອອນລາຍ" } },
+  { value: "100%", label: { en: "Paperless & digital", lo: "ບໍ່ໃຊ້ເຈ້ຍ ທັງໝົດ" } },
+] as const;
+
+// Category slider — image cards (local photo bg + title + benefit line); a color
+// gradient shows underneath as a fallback while the image loads.
+const CATEGORY_SLIDES = [
+  { id: "civil", img: civilPopulationImg, en: "Register births, IDs, certificates and family records — all in one place.", lo: "ຂຶ້ນທະບຽນການເກີດ, ບັດປະຈຳຕົວ, ໃບຢັ້ງຢືນ ແລະ ຂໍ້ມູນຄອບຄົວ ໃນບ່ອນດຽວ." },
+  { id: "immigration", img: immigrationImg, en: "Passports, visas and travel documents, handled fully online.", lo: "ໜັງສືຜ່ານແດນ, ວີຊາ ແລະ ເອກະສານເດີນທາງ ຈັດການອອນລາຍທັງໝົດ." },
+  { id: "finance", img: taxPaymentImg, en: "Pay taxes, bills and government fees quickly and securely.", lo: "ຊຳລະອາກອນ, ໃບບິນ ແລະ ຄ່າທຳນຽມລັດ ຢ່າງໄວ ແລະ ປອດໄພ." },
+  { id: "housing", img: landPropertyImg, en: "Land titles, property and building permits made simple and clear.", lo: "ໃບຕາດິນ, ຊັບສິນ ແລະ ໃບອະນຸຍາດກໍ່ສ້າງ ທີ່ງ່າຍ ແລະ ຊັດເຈນ." },
+  { id: "transport", img: transportImg, en: "Driving licences and vehicle registration without the queues.", lo: "ໃບຂັບຂີ່ ແລະ ການຂຶ້ນທະບຽນຍານພາຫະນະ ໂດຍບໍ່ຕ້ອງຕໍ່ຄິວ." },
+  { id: "welfare", img: socialProtectionImg, en: "Social assistance, benefits and support for those who need it.", lo: "ການຊ່ວຍເຫຼືອສັງຄົມ, ສະຫວັດດີການ ແລະ ການສະໜັບສະໜູນ ສຳລັບຜູ້ທີ່ຕ້ອງການ." },
+  { id: "education", img: educationImg, en: "Schools, scholarships and student services for every stage.", lo: "ໂຮງຮຽນ, ທຶນການສຶກສາ ແລະ ການບໍລິການນັກຮຽນ ໃນທຸກຂັ້ນ." },
+  { id: "health", img: healthImg, en: "Access healthcare, insurance and medical services near you.", lo: "ເຂົ້າເຖິງການດູແລສຸຂະພາບ, ປະກັນໄພ ແລະ ການບໍລິການທາງການແພດ." },
+] as const;
+
+// "Services for Everyone" slider — featured services with the responsible entity
+const EVERYONE_SERVICES = [
+  {
+    id: "resident",
+    dept: { en: "District Administration Office", lo: "ຫ້ອງການປົກຄອງເມືອງ" },
+    en: "Request an official certificate proving your current residential address.",
+    lo: "ຂໍໃບຢັ້ງຢືນທາງການ ເພື່ອຢືນຢັນທີ່ຢູ່ອາໄສປັດຈຸບັນຂອງທ່ານ.",
+  },
+  {
+    id: "birth",
+    dept: { en: "Family Registration Office", lo: "ຫ້ອງການທະບຽນຄອບຄົວ" },
+    en: "Register a new birth and receive the official birth certificate.",
+    lo: "ຂຶ້ນທະບຽນການເກີດ ແລະ ຮັບໃບຢັ້ງຢືນການເກີດທາງການ.",
+  },
+  {
+    id: "marriage",
+    dept: { en: "Family Registration Office", lo: "ຫ້ອງການທະບຽນຄອບຄົວ" },
+    en: "Register your marriage and obtain an official marriage certificate.",
+    lo: "ຂຶ້ນທະບຽນການແຕ່ງດອງ ແລະ ຮັບໃບຢັ້ງຢືນການແຕ່ງດອງທາງການ.",
+  },
+  {
+    id: "family-book",
+    dept: { en: "Ministry of Home Affairs", lo: "ກະຊວງພາຍໃນ" },
+    en: "Create or update your household registration book online.",
+    lo: "ສ້າງ ຫຼື ອັບເດດປຶ້ມສຳມະໂນຄົວຂອງທ່ານແບບອອນລາຍ.",
+  },
+  {
+    id: "death",
+    dept: { en: "Family Registration Office", lo: "ຫ້ອງການທະບຽນຄອບຄົວ" },
+    en: "Register a death and receive the official record.",
+    lo: "ຂຶ້ນທະບຽນການເສຍຊີວິດ ແລະ ຮັບເອກະສານທາງການ.",
+  },
+  {
+    id: "divorce",
+    dept: { en: "People's Court", lo: "ສານປະຊາຊົນ" },
+    en: "Register a divorce and obtain the legal certificate.",
+    lo: "ຂຶ້ນທະບຽນການຢ່າຮ້າງ ແລະ ຮັບໃບຢັ້ງຢືນຕາມກົດໝາຍ.",
+  },
+] as const;
+
+// Consistent, centered section heading (matches the "Services for Everyone" style)
+function SectionHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="text-center mb-8 max-w-lg mx-auto px-4">
+      <h2 className="text-gray-900 font-bold text-2xl lg:text-3xl leading-tight">{title}</h2>
+      {subtitle && (
+        <p className="text-gray-500 text-sm lg:text-base mt-2 leading-relaxed">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+// FAQ — bilingual accordion content
+const FAQ_ITEMS = [
+  {
+    en: { q: "Do I need an account to use the services?", a: "You can browse all services freely. To apply, pay or track a request, sign in with your LaoID." },
+    lo: { q: "ຂ້ອຍຕ້ອງມີບັນຊີເພື່ອໃຊ້ການບໍລິການບໍ່?", a: "ທ່ານສາມາດເບິ່ງການບໍລິການທັງໝົດໄດ້ຢ່າງອິດສະຫຼະ. ເພື່ອຍື່ນຂໍ, ຊຳລະ ຫຼື ຕິດຕາມ ໃຫ້ເຂົ້າສູ່ລະບົບດ້ວຍ LaoID." },
+  },
+  {
+    en: { q: "How long does processing take?", a: "Most civil registration services are completed within a few working days. Each service shows its own estimate." },
+    lo: { q: "ການດຳເນີນການໃຊ້ເວລາດົນປານໃດ?", a: "ການບໍລິການທະບຽນພົນລະເມືອງສ່ວນຫຼາຍ ສຳເລັດພາຍໃນສອງສາມວັນລັດຖະການ. ແຕ່ລະການບໍລິການຈະສະແດງເວລາຄາດໝາຍຂອງມັນ." },
+  },
+  {
+    en: { q: "Is my personal data secure?", a: "Yes. Your information is protected with government-grade security and encryption." },
+    lo: { q: "ຂໍ້ມູນສ່ວນຕົວຂອງຂ້ອຍປອດໄພບໍ່?", a: "ແມ່ນແລ້ວ. ຂໍ້ມູນຂອງທ່ານຖືກປົກປ້ອງດ້ວຍຄວາມປອດໄພ ແລະ ການເຂົ້າລະຫັດລະດັບລັດຖະບານ." },
+  },
+  {
+    en: { q: "Can I pay service fees online?", a: "Yes. Paid services support QR, bank transfer and card payments." },
+    lo: { q: "ຂ້ອຍສາມາດຊຳລະຄ່າທຳນຽມອອນລາຍໄດ້ບໍ່?", a: "ໄດ້. ການບໍລິການທີ່ເສຍຄ່າ ຮອງຮັບການຊຳລະຜ່ານ QR, ໂອນທະນາຄານ ແລະ ບັດ." },
+  },
+  {
+    en: { q: "Which languages are supported?", a: "The platform is fully available in Lao and English." },
+    lo: { q: "ຮອງຮັບພາສາໃດແດ່?", a: "ແພລດຟອມມີໃຫ້ບໍລິການເຕັມຮູບແບບໃນພາສາລາວ ແລະ ອັງກິດ." },
+  },
+] as const;
 
 interface HomePageProps {
   onTabChange: (tab: string) => void;
@@ -88,6 +262,14 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
   const [homeServiceIds, setHomeServiceIds] = useState<string[]>(DEFAULT_HOME_SERVICES);
   const [showCustomize, setShowCustomize] = useState(false);
   const [draftIds, setDraftIds] = useState<string[]>(DEFAULT_HOME_SERVICES);
+
+  // Horizontal sliders (category + featured services)
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const everyoneRef = useRef<HTMLDivElement>(null);
+  const newsRef = useRef<HTMLDivElement>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const slideBy = (ref: React.RefObject<HTMLDivElement | null>, dir: number) =>
+    ref.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
 
   useEffect(() => {
     const seen = localStorage.getItem("lcc_tutorial_seen");
@@ -144,10 +326,11 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
   return (
     <div className="min-h-full">
       {/* Hero Slider */}
-      <HeroSlider
+      <Hero
         greeting={t("greeting")}
         name={isAuthenticated ? (lang === "lo" ? "ສົມໄຊ" : "Somchai") : ""}
-        lang={lang}
+        authenticated={isAuthenticated}
+        onSignIn={() => onTabChange("account")}
       >
         <div className="flex gap-2">
           <div className="flex-1 flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-md">
@@ -167,13 +350,26 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             {t("search")}
           </button>
         </div>
-      </HeroSlider>
+
+        {/* Service badges — quick access to the Phase-1 services */}
+        <div className="flex flex-wrap items-center justify-start gap-2">
+          {homeServices.slice(0, 5).map((s) => (
+            <button
+              key={s.id}
+              onClick={() => s.tab && onTabChange(s.tab)}
+              className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-medium backdrop-blur-sm transition-colors whitespace-nowrap"
+            >
+              {lang === "lo" ? s.nameLo : s.name}
+            </button>
+          ))}
+        </div>
+      </Hero>
 
       {/* Content */}
-      <div className="px-4 lg:px-8 py-6 space-y-6 max-w-screen-xl mx-auto">
+      <div className="px-4 lg:px-8 py-6 space-y-10 max-w-screen-xl mx-auto">
 
-        {/* Action Banner */}
-        {showBanner && (
+        {/* Action Banner — only when signed in */}
+        {isAuthenticated && showBanner && (
           <div className="relative flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50">
             <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -201,11 +397,92 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
           </div>
         )}
 
+        {/* Explore by category — image-style slider (hidden while searching) */}
+        {!searchQuery.trim() && (
+          <div className="pt-4">
+            <SectionHeader title={t("categoriesTitle")} subtitle={t("categoriesSubtitle")} />
+            <div
+              ref={categoryRef}
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {CATEGORY_SLIDES.map((slide) => {
+                const cat = CATEGORIES.find((c) => c.id === slide.id);
+                if (!cat) return null;
+                return (
+                  <div
+                    key={slide.id}
+                    onClick={() => onTabChange("service")}
+                    className="group relative flex-shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] h-[360px] rounded-3xl overflow-hidden snap-start text-left cursor-pointer"
+                  >
+                    {/* color gradient fallback */}
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(155deg, ${cat.color} 0%, #17235c 100%)` }}
+                    />
+                    {/* photo */}
+                    <img
+                      src={slide.img}
+                      alt=""
+                      aria-hidden
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    {/* legibility scrim */}
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: "linear-gradient(to top, rgba(10,15,40,0.82) 8%, rgba(10,15,40,0.15) 55%, transparent 100%)" }}
+                    />
+                    {/* content */}
+                    <div className="absolute inset-x-0 bottom-0 p-6">
+                      <h3 className="text-white text-xl font-semibold leading-tight">
+                        {lang === "lo" ? cat.labelLo : cat.label}
+                      </h3>
+                      <p className="text-white/80 text-sm mt-2 leading-relaxed">
+                        {slide[lang]}
+                      </p>
+                      <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold px-3.5 py-2 rounded-full bg-white text-gray-900">
+                        {t("seeService")}
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                onClick={() => slideBy(categoryRef, -1)}
+                aria-label="Previous"
+                className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors hover:bg-blue-50"
+                style={{ borderColor: "#344EAD", color: "#344EAD" }}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => slideBy(categoryRef, 1)}
+                aria-label="Next"
+                className="w-10 h-10 rounded-full border flex items-center justify-center text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#344EAD", borderColor: "#344EAD" }}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Services Section */}
         <div>
-          <div className="flex items-center justify-between mb-4 gap-2">
-            <h2 className="text-gray-800">{t("whatDoYouNeed")}</h2>
-            <div className="flex items-center gap-2">
+          <div className="flex items-end justify-between gap-3 mb-6">
+            <div className="min-w-0">
+              <h2 className="text-gray-900 font-bold text-2xl lg:text-3xl leading-tight">
+                {t("whatDoYouNeed")}
+              </h2>
+              <p className="text-gray-500 text-sm lg:text-base mt-2 leading-relaxed">
+                {t("whatDoYouNeedSub")}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={openCustomize}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors hover:opacity-80"
@@ -226,53 +503,14 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
           </div>
 
           {/* Service Grid: 7 services + More */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
-            {displayedServices.map((service) => {
-              const Icon = service.icon;
-              const cat = CATEGORIES.find((c) => c.id === service.category)!;
-              const isHovered = hoveredService === service.id;
-              return (
-                <button
-                  key={service.id}
-                  onClick={() => setSelectedService(service)}
-                  onMouseEnter={() => setHoveredService(service.id)}
-                  onMouseLeave={() => setHoveredService(null)}
-                  className="rounded-2xl p-4 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border"
-                  style={{
-                    backgroundColor: isHovered ? "#344EAD" : "white",
-                    borderColor: isHovered ? "#2A3F99" : "#F3F4F6",
-                  }}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-all duration-200"
-                    style={{
-                      backgroundColor: isHovered
-                        ? "rgba(255,255,255,0.2)"
-                        : cat.bg,
-                    }}
-                  >
-                    <Icon
-                      className="w-5 h-5 transition-all duration-200"
-                      style={{ color: isHovered ? "white" : cat.color }}
-                    />
-                  </div>
-                  <p
-                    className="text-sm font-medium leading-snug transition-all duration-200"
-                    style={{ color: isHovered ? "white" : "#1F2937" }}
-                  >
-                    {lang === "lo" ? service.nameLo : service.name}
-                  </p>
-                  <p
-                    className="text-xs mt-0.5 transition-all duration-200"
-                    style={{
-                      color: isHovered ? "rgba(255,255,255,0.65)" : "#9CA3AF",
-                    }}
-                  >
-                    {lang === "lo" ? service.descLo : service.desc}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {displayedServices.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                onClick={() => setSelectedService(service)}
+              />
+            ))}
 
             {/* "More" tile — only when not searching */}
             {!searchQuery.trim() && (
@@ -280,32 +518,18 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 onClick={() => onTabChange("service")}
                 onMouseEnter={() => setHoveredService("__more__")}
                 onMouseLeave={() => setHoveredService(null)}
-                className="rounded-2xl p-4 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-dashed"
+                className="rounded-2xl p-5 text-left shadow-sm hover:shadow-lg transition-all duration-200 border border-dashed"
                 style={{
                   backgroundColor:
                     hoveredService === "__more__" ? "#344EAD" : "#F8FAFF",
                   borderColor: "#C7D2FE",
                 }}
               >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-all duration-200"
-                  style={{
-                    backgroundColor:
-                      hoveredService === "__more__"
-                        ? "rgba(255,255,255,0.2)"
-                        : "#EEF2FF",
-                  }}
-                >
-                  <LayoutGrid
-                    className="w-5 h-5"
-                    style={{
-                      color:
-                        hoveredService === "__more__" ? "white" : "#344EAD",
-                    }}
-                  />
+                <div className="mb-4">
+                  <GlassIcon icon={LayoutGrid} color="#344EAD" size={56} />
                 </div>
                 <p
-                  className="text-sm font-medium leading-snug"
+                  className="text-base font-semibold leading-snug"
                   style={{
                     color: hoveredService === "__more__" ? "white" : "#1F2937",
                   }}
@@ -313,7 +537,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                   {t("more")}
                 </p>
                 <p
-                  className="text-xs mt-0.5"
+                  className="text-sm mt-1 leading-snug"
                   style={{
                     color:
                       hoveredService === "__more__"
@@ -334,36 +558,258 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
           )}
         </div>
 
-        {/* Latest Updates */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-800">{t("latestUpdates")}</h2>
-          </div>
+        {/* Marketing sections — hidden while searching */}
+        {!searchQuery.trim() && (
+          <div className="pt-4">
+            {/* Quantitative highlights — full-bleed band */}
+            <div
+              className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden px-6 py-9 lg:px-10 text-white"
+              style={{ background: "linear-gradient(135deg, #344EAD 0%, #1a2d7a 100%)" }}
+            >
+              {/* decorative glows */}
+              <div
+                className="pointer-events-none absolute -top-16 -right-12 w-56 h-56 rounded-full"
+                style={{ background: "radial-gradient(circle, rgba(245,158,11,0.28) 0%, transparent 70%)" }}
+              />
+              <div
+                className="pointer-events-none absolute -bottom-24 -left-16 w-64 h-64 rounded-full"
+                style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }}
+              />
+              <div className="relative max-w-screen-xl mx-auto">
+                <p className="text-center text-white/60 text-xs font-medium tracking-[0.15em] uppercase mb-7">
+                  {t("statsTitle")}
+                </p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-7">
+                  {STATS.map((s, i) => (
+                    <div
+                      key={s.label.en}
+                      className={`text-center ${i > 0 ? "lg:border-l lg:border-white/15" : ""}`}
+                    >
+                      <p className="text-3xl lg:text-[2.5rem] font-bold leading-none tracking-tight">
+                        {s.value}
+                      </p>
+                      <p className="text-white/65 text-xs mt-2.5 leading-snug px-2">
+                        {s.label[lang]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {NEWS[lang].map((item) => (
+            {/* Services for Everyone — full-bleed aurora background + featured slider */}
+            <div className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden bg-white py-12 lg:py-16">
+              {/* aurora glows — brand blue + amber */}
+              <div className="pointer-events-none absolute inset-0">
+                <div
+                  className="absolute -top-10 left-[18%] w-80 h-80 rounded-full blur-3xl"
+                  style={{ background: "rgba(96,165,250,0.32)" }}
+                />
+                <div
+                  className="absolute -top-6 right-[18%] w-80 h-80 rounded-full blur-3xl"
+                  style={{ background: "rgba(245,158,11,0.22)" }}
+                />
+                <div
+                  className="absolute bottom-0 left-[35%] w-[28rem] h-72 rounded-full blur-3xl"
+                  style={{ background: "rgba(52,78,173,0.16)" }}
+                />
+              </div>
+
+              <div className="relative max-w-screen-xl mx-auto">
+                <SectionHeader title={t("everyoneTitle")} subtitle={t("everyoneSubtitle")} />
+
+                <div
+                  ref={everyoneRef}
+                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 px-4 lg:px-8 [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: "none" }}
+                >
+                  {EVERYONE_SERVICES.map((item) => {
+                    const svc = SERVICES.find((s) => s.id === item.id);
+                    if (!svc) return null;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => svc.tab && onTabChange(svc.tab)}
+                        className="flex-shrink-0 w-[270px] snap-start bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-left flex flex-col"
+                      >
+                        <h3 className="text-gray-900 font-semibold text-lg leading-snug">
+                          {lang === "lo" ? svc.nameLo : svc.name}
+                        </h3>
+                        <p className="text-gray-500 text-sm mt-2.5 leading-relaxed flex-1">
+                          {item[lang]}
+                        </p>
+                        <span
+                          className="mt-5 self-start text-xs font-medium px-3 py-1.5 rounded-full leading-snug"
+                          style={{ backgroundColor: "#EAF1FF", color: "#344EAD" }}
+                        >
+                          {item.dept[lang]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* slider controls */}
+                <div className="flex items-center justify-center gap-3 mt-7">
+                  <button
+                    onClick={() => slideBy(everyoneRef, -1)}
+                    aria-label="Previous"
+                    className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors hover:bg-blue-50"
+                    style={{ borderColor: "#344EAD", color: "#344EAD" }}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => slideBy(everyoneRef, 1)}
+                    aria-label="Next"
+                    className="w-10 h-10 rounded-full border flex items-center justify-center text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#344EAD", borderColor: "#344EAD" }}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Latest Updates — news slider (3 in view) */}
+        <div>
+          <SectionHeader title={t("latestUpdates")} subtitle={t("latestUpdatesSub")} />
+
+          <div
+            ref={newsRef}
+            className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {NEWS_ITEMS.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-4 items-start hover:shadow-md transition-shadow cursor-pointer"
+                className="flex-shrink-0 w-[82%] sm:w-[46%] lg:w-[calc((100%-2rem)/3)] snap-start bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col"
               >
-                <div
-                  className="flex-shrink-0 text-xs font-medium px-2 py-1.5 rounded-lg text-center min-w-[52px] leading-tight"
-                  style={{ backgroundColor: "#EEF2FF", color: "#344EAD" }}
-                >
-                  {item.date.split(" ")[0]}
-                  <br />
-                  {item.date.split(" ")[1]}
+                {/* thumbnail */}
+                <div className="relative h-40 w-full overflow-hidden">
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: `linear-gradient(135deg, ${item.color} 0%, #17235c 100%)` }}
+                  />
+                  <img
+                    src={item.thumb}
+                    alt=""
+                    aria-hidden
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <span
+                    className="absolute top-3 left-3 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: item.bg, color: item.color }}
+                  >
+                    {item.cat[lang]}
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-gray-800 text-sm font-medium leading-snug">
-                    {item.title}
+                {/* body */}
+                <div className="p-4 flex flex-col flex-1">
+                  <p className="text-gray-400 text-xs">{item.date[lang]}</p>
+                  <p className="text-gray-800 text-base font-semibold leading-snug mt-1">
+                    {item[lang].title}
                   </p>
-                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">
-                    {item.desc}
+                  <p className="text-gray-400 text-sm mt-1.5 leading-relaxed flex-1">
+                    {item[lang].desc}
                   </p>
+                  <button
+                    className="mt-4 self-start inline-flex items-center gap-1 text-sm font-semibold"
+                    style={{ color: "#344EAD" }}
+                  >
+                    {t("readMore")}
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* slider controls */}
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <button
+              onClick={() => slideBy(newsRef, -1)}
+              aria-label="Previous"
+              className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors hover:bg-blue-50"
+              style={{ borderColor: "#344EAD", color: "#344EAD" }}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => slideBy(newsRef, 1)}
+              aria-label="Next"
+              className="w-10 h-10 rounded-full border flex items-center justify-center text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "#344EAD", borderColor: "#344EAD" }}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* CTA band — full-bleed, only for guests */}
+        {!isAuthenticated && (
+          <div
+            className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #344EAD 0%, #1a2d7a 100%)" }}
+          >
+            {/* decorative glows */}
+            <div
+              className="pointer-events-none absolute -top-16 -right-10 w-64 h-64 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(245,158,11,0.28) 0%, transparent 70%)" }}
+            />
+            <div
+              className="pointer-events-none absolute -bottom-20 -left-16 w-72 h-72 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }}
+            />
+            <div className="relative max-w-screen-xl mx-auto px-6 lg:px-10 py-12 lg:py-16 text-center text-white">
+              <h2 className="font-bold text-2xl lg:text-3xl leading-tight max-w-2xl mx-auto">
+                {t("ctaTitle")}
+              </h2>
+              <p className="text-white/75 text-sm lg:text-base mt-3 max-w-xl mx-auto leading-relaxed">
+                {t("ctaDesc")}
+              </p>
+              <button
+                onClick={() => onTabChange("account")}
+                className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm shadow-lg hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: "#F59E0B", color: "white" }}
+              >
+                {t("ctaButton")}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* FAQ */}
+        <div>
+          <SectionHeader title={t("faqTitle")} subtitle={t("faqSubtitle")} />
+          <div className="max-w-3xl mx-auto space-y-3">
+            {FAQ_ITEMS.map((item, i) => {
+              const open = openFaq === i;
+              return (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(open ? null : i)}
+                    className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                  >
+                    <span className="text-gray-800 font-semibold text-base leading-snug">
+                      {item[lang].q}
+                    </span>
+                    <ChevronDown
+                      className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {open && (
+                    <div className="px-4 pb-4 -mt-1 text-gray-500 text-sm leading-relaxed">
+                      {item[lang].a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

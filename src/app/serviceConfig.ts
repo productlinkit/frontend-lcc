@@ -96,6 +96,63 @@ export const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   requiredDocs: [{ en: "National ID card", lo: "ບັດປະຈຳຕົວ" }],
 };
 
+/*
+ * Dummy fee schedule (LAK, 0 = free) for services without a full config above.
+ * Demo estimates only. Free: social aid, health, education, most bill/tax
+ * payments (you pay the amount, not a service fee). Paid: issuance, permits,
+ * licenses & documents.
+ */
+export const SERVICE_FEE: Record<string, number> = {
+  // Civil & Population
+  "national-id": 30000,
+  "name-change": 40000,
+  // Immigration
+  passport: 250000,
+  visa: 200000,
+  "travel-doc": 100000,
+  embassy: 50000,
+  // Tax & Payment
+  "tax-payment": 0,
+  utility: 0,
+  fines: 0,
+  "gov-fees": 0,
+  "biz-reg": 150000,
+  "biz-permit": 100000,
+  "corp-tax": 0,
+  "trade-license": 120000,
+  // Health
+  insurance: 0,
+  appointment: 0,
+  vaccination: 0,
+  "medical-cert": 20000,
+  // Transport
+  "driver-license": 60000,
+  "vehicle-reg": 80000,
+  "road-tax": 0,
+  // Land & Property
+  "property-reg": 100000,
+  "building-permit": 150000,
+  "land-cert": 50000,
+  "farm-reg": 0,
+  // Social Protection
+  "social-aid": 0,
+  disability: 0,
+  "child-support": 0,
+  subsidy: 0,
+  // Education
+  enrollment: 0,
+  "cert-verify": 30000,
+  scholarship: 0,
+  // Civil (community & legal)
+  forums: 0,
+  village: 0,
+  court: 50000,
+  "police-report": 0,
+  "legal-doc": 40000,
+};
+
 export function getServiceConfig(id: string): ServiceConfig {
-  return SERVICE_CONFIG[id] ?? DEFAULT_SERVICE_CONFIG;
+  if (SERVICE_CONFIG[id]) return SERVICE_CONFIG[id];
+  const fee = id in SERVICE_FEE ? SERVICE_FEE[id] : null;
+  return { ...DEFAULT_SERVICE_CONFIG, fee };
 }

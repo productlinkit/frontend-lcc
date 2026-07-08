@@ -19,8 +19,10 @@ interface LangCtx {
   toggle: () => void;
 }
 
+const DEFAULT_LANG: Lang = "lo";
+
 const Context = createContext<LangCtx>({
-  lang: "en",
+  lang: DEFAULT_LANG,
   setLang: () => {},
   toggle: () => {},
 });
@@ -31,7 +33,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved === "en" || saved === "lo") return saved;
     }
-    return "en";
+    return DEFAULT_LANG;
   });
 
   const setLang = (l: Lang) => {

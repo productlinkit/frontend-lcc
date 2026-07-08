@@ -18,6 +18,8 @@ import {
   CalendarClock,
   CheckCircle2,
 } from "lucide-react";
+import edlLogo from "../../imports/edl-logo.png";
+import nampapaLogo from "../../imports/nampapa-logo.png";
 import { useT, useLang } from "../i18n";
 
 type WalletKey = Parameters<ReturnType<typeof useT<"wallet">>>[0];
@@ -31,6 +33,7 @@ interface Bill {
   dueDays: number;
   status: "overdue" | "due-soon" | "upcoming";
   icon: React.ElementType;
+  logo?: string;
   color: string;
   bg: string;
 }
@@ -49,6 +52,7 @@ interface QuickAction {
   id: string;
   labelKey: WalletKey;
   icon: React.ElementType;
+  logo?: string;
   color: string;
   bg: string;
 }
@@ -63,6 +67,7 @@ const BILLS: Bill[] = [
     dueDays: 3,
     status: "due-soon",
     icon: Zap,
+    logo: edlLogo,
     color: "#F59E0B",
     bg: "#FEF3C7",
   },
@@ -75,6 +80,7 @@ const BILLS: Bill[] = [
     dueDays: 2,
     status: "overdue",
     icon: Droplet,
+    logo: nampapaLogo,
     color: "#DC2626",
     bg: "#FEE2E2",
   },
@@ -157,8 +163,8 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: "transfer", labelKey: "qaTransfer", icon: Send, color: "#344EAD", bg: "#EEF2FF" },
   { id: "scan", labelKey: "qaScan", icon: QrCode, color: "#7C3AED", bg: "#EDE9FE" },
   { id: "mobile", labelKey: "qaMobile", icon: Smartphone, color: "#0EA5E9", bg: "#E0F2FE" },
-  { id: "electricity", labelKey: "qaElectricity", icon: Zap, color: "#F59E0B", bg: "#FEF3C7" },
-  { id: "water", labelKey: "qaWater", icon: Droplet, color: "#0891B2", bg: "#CFFAFE" },
+  { id: "electricity", labelKey: "qaElectricity", icon: Zap, logo: edlLogo, color: "#F59E0B", bg: "#FEF3C7" },
+  { id: "water", labelKey: "qaWater", icon: Droplet, logo: nampapaLogo, color: "#0891B2", bg: "#CFFAFE" },
   { id: "internet", labelKey: "qaInternet", icon: Wifi, color: "#DB2777", bg: "#FCE7F3" },
   { id: "fines", labelKey: "qaFines", icon: AlertOctagon, color: "#DC2626", bg: "#FEE2E2" },
 ];
@@ -271,10 +277,14 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                   className="flex flex-col items-center gap-2 group"
                 >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:-translate-y-0.5 group-hover:shadow-md"
-                    style={{ backgroundColor: a.bg }}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden transition-transform group-hover:-translate-y-0.5 group-hover:shadow-md"
+                    style={{ backgroundColor: a.logo ? "white" : a.bg, border: a.logo ? "1px solid #F3F4F6" : undefined }}
                   >
-                    <Icon className="w-5 h-5" style={{ color: a.color }} />
+                    {a.logo ? (
+                      <img src={a.logo} alt="" className="w-full h-full object-contain p-1.5" />
+                    ) : (
+                      <Icon className="w-5 h-5" style={{ color: a.color }} />
+                    )}
                   </div>
                   <span className="text-xs text-gray-600 text-center leading-tight">
                     {t(a.labelKey)}
@@ -334,10 +344,14 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
                   className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-shadow"
                 >
                   <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: b.bg }}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    style={{ backgroundColor: b.logo ? "white" : b.bg, border: b.logo ? "1px solid #F3F4F6" : undefined }}
                   >
-                    <Icon className="w-5 h-5" style={{ color: b.color }} />
+                    {b.logo ? (
+                      <img src={b.logo} alt="" className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <Icon className="w-5 h-5" style={{ color: b.color }} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 leading-snug">

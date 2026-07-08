@@ -18,11 +18,11 @@ import {
 } from "lucide-react";
 import { useT } from "../i18n";
 import residentCertPdf from "../../imports/RC 2026 Report.pdf";
+import userPhoto from "../../imports/user-photo.png";
 
 const RESIDENT_CERT_REF = "RC-2026-004821";
 
-const PROFILE_PHOTO =
-  "https://images.unsplash.com/photo-1600896997793-b8ed3459a17f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzb3V0aGVhc3QlMjBhc2lhbiUyMHByb2Zlc3Npb25hbCUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc3NjY3MDIyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+const PROFILE_PHOTO = userPhoto;
 
 const DOCUMENTS = [
   {

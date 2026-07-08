@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useT, useLang } from "../i18n";
+import { GlassIcon } from "./GlassIcon";
+import { ServiceCard } from "./ServiceCard";
 import {
   Search,
   Users,
@@ -7,13 +9,9 @@ import {
   Wallet,
   HeartPulse,
   Bus,
-  Briefcase,
   Building2,
-  ShieldCheck,
   GraduationCap,
-  Sprout,
   HandHeart,
-  MessagesSquare,
   ChevronRight,
   ChevronLeft,
   Home,
@@ -93,16 +91,12 @@ export interface ServiceItem {
 export const CATEGORIES: Category[] = [
   { id: "civil", label: "Civil & Population", labelLo: "ພົນລະເມືອງ ແລະ ການທະບຽນ", desc: "ID, certificates & registration", descLo: "ບັດປະຈຳຕົວ, ໃບຢັ້ງຢືນ ແລະ ການຂຶ້ນທະບຽນ", icon: Users, color: "#344EAD", bg: "#EEF2FF" },
   { id: "immigration", label: "Immigration", labelLo: "ກວດຄົນເຂົ້າ-ອອກເມືອງ", desc: "Passport, visa & travel", descLo: "ໜັງສືຜ່ານແດນ, ວີຊາ ແລະ ການເດີນທາງ", icon: Plane, color: "#0EA5E9", bg: "#E0F2FE" },
-  { id: "finance", label: "Finance & Tax", labelLo: "ການເງິນ ແລະ ພາສີ-ອາກອນ", desc: "Tax, payments & permits", descLo: "ອາກອນ, ການຊຳລະ ແລະ ໃບອະນຸຍາດ", icon: Wallet, color: "#16A34A", bg: "#DCFCE7" },
-  { id: "health", label: "Health", labelLo: "ສາທາລະນະສຸກ", desc: "Healthcare & insurance", descLo: "ການດູແລສຸຂະພາບ ແລະ ປະກັນໄພ", icon: HeartPulse, color: "#DC2626", bg: "#FEE2E2" },
+  { id: "finance", label: "Tax & Payment", labelLo: "ອາກອນ ແລະ ການຊຳລະ", desc: "Tax, bills & payments", descLo: "ອາກອນ, ໃບບິນ ແລະ ການຊຳລະ", icon: Wallet, color: "#16A34A", bg: "#DCFCE7" },
+  { id: "housing", label: "Land & Property", labelLo: "ທີ່ດິນ ແລະ ຊັບສິນ", desc: "Land, property & building", descLo: "ທີ່ດິນ, ຊັບສິນ ແລະ ການກໍ່ສ້າງ", icon: Building2, color: "#EA580C", bg: "#FFEDD5" },
   { id: "transport", label: "Transport", labelLo: "ການຂົນສົ່ງ", desc: "License & vehicle", descLo: "ໃບຂັບຂີ່ ແລະ ຍານພາຫະນະ", icon: Bus, color: "#F59E0B", bg: "#FEF3C7" },
-  { id: "business", label: "Business", labelLo: "ທຸລະກິດ", desc: "Registration & licensing", descLo: "ການຂຶ້ນທະບຽນ ແລະ ໃບອະນຸຍາດ", icon: Briefcase, color: "#7C3AED", bg: "#EDE9FE" },
-  { id: "housing", label: "Housing & Land", labelLo: "ທີ່ຢູ່ອາໄສ ແລະ ທີ່ດິນ", desc: "Property & residence", descLo: "ຊັບສິນ ແລະ ທີ່ຢູ່ອາໄສ", icon: Building2, color: "#EA580C", bg: "#FFEDD5" },
-  { id: "safety", label: "Safety & Legal", labelLo: "ຄວາມປອດໄພ ແລະ ກົດໝາຍ", desc: "Legal documents & reports", descLo: "ເອກະສານກົດໝາຍ ແລະ ການລາຍງານ", icon: ShieldCheck, color: "#1F2937", bg: "#E5E7EB" },
+  { id: "welfare", label: "Social Protection", labelLo: "ການປົກປ້ອງທາງສັງຄົມ", desc: "Aid, benefits & support", descLo: "ການຊ່ວຍເຫຼືອ ແລະ ສະຫວັດດີການ", icon: HandHeart, color: "#DB2777", bg: "#FCE7F3" },
   { id: "education", label: "Education", labelLo: "ການສຶກສາ", desc: "Schools & scholarships", descLo: "ໂຮງຮຽນ ແລະ ທຶນການສຶກສາ", icon: GraduationCap, color: "#2563EB", bg: "#DBEAFE" },
-  { id: "agriculture", label: "Agriculture", labelLo: "ກະສິກຳ", desc: "Farming & livestock", descLo: "ການເພາະປູກ ແລະ ການລ້ຽງສັດ", icon: Sprout, color: "#15803D", bg: "#DCFCE7" },
-  { id: "welfare", label: "Welfare", labelLo: "ສະຫວັດດີການສັງຄົມ", desc: "Social aid & benefits", descLo: "ການຊ່ວຍເຫຼືອ ແລະ ສິດຜົນປະໂຫຍດສັງຄົມ", icon: HandHeart, color: "#DB2777", bg: "#FCE7F3" },
-  { id: "community", label: "Community", labelLo: "ຊຸມຊົນ", desc: "Local services & requests", descLo: "ການບໍລິການ ແລະ ການຮ້ອງຂໍຂັ້ນທ້ອງຖິ່ນ", icon: MessagesSquare, color: "#0891B2", bg: "#CFFAFE" },
+  { id: "health", label: "Health", labelLo: "ສາທາລະນະສຸກ", desc: "Healthcare & insurance", descLo: "ການດູແລສຸຂະພາບ ແລະ ປະກັນໄພ", icon: HeartPulse, color: "#DC2626", bg: "#FEE2E2" },
 ];
 
 export const SERVICES: ServiceItem[] = [
@@ -141,10 +135,10 @@ export const SERVICES: ServiceItem[] = [
   { id: "road-tax", name: "Road Tax", nameLo: "ຄ່າທຳນຽມທາງ", desc: "Pay annual road tax", descLo: "ຊຳລະຄ່າທຳນຽມທາງປະຈຳປີ", icon: Route, category: "transport" },
 
   // Business
-  { id: "biz-reg", name: "Business Registration", nameLo: "ການຂຶ້ນທະບຽນວິສາຫະກິດ", desc: "Register a new business", descLo: "ຂຶ້ນທະບຽນທຸລະກິດໃໝ່", icon: Store, category: "business" },
-  { id: "biz-permit", name: "Business Permit", nameLo: "ໃບອະນຸຍາດທຸລະກິດ", desc: "Apply for business permit", descLo: "ຍື່ນຂໍໃບອະນຸຍາດທຸລະກິດ", icon: BadgeCheck, category: "business" },
-  { id: "corp-tax", name: "Corporate Tax", nameLo: "ອາກອນວິສາຫະກິດ", desc: "File corporate taxes", descLo: "ແຈ້ງເສຍອາກອນວິສາຫະກິດ", icon: Building, category: "business" },
-  { id: "trade-license", name: "Trade License", nameLo: "ໃບອະນຸຍາດການຄ້າ", desc: "Apply for trade license", descLo: "ຍື່ນຂໍໃບອະນຸຍາດການຄ້າ", icon: ScrollText, category: "business" },
+  { id: "biz-reg", name: "Business Registration", nameLo: "ການຂຶ້ນທະບຽນວິສາຫະກິດ", desc: "Register a new business", descLo: "ຂຶ້ນທະບຽນທຸລະກິດໃໝ່", icon: Store, category: "finance" },
+  { id: "biz-permit", name: "Business Permit", nameLo: "ໃບອະນຸຍາດທຸລະກິດ", desc: "Apply for business permit", descLo: "ຍື່ນຂໍໃບອະນຸຍາດທຸລະກິດ", icon: BadgeCheck, category: "finance" },
+  { id: "corp-tax", name: "Corporate Tax", nameLo: "ອາກອນວິສາຫະກິດ", desc: "File corporate taxes", descLo: "ແຈ້ງເສຍອາກອນວິສາຫະກິດ", icon: Building, category: "finance" },
+  { id: "trade-license", name: "Trade License", nameLo: "ໃບອະນຸຍາດການຄ້າ", desc: "Apply for trade license", descLo: "ຍື່ນຂໍໃບອະນຸຍາດການຄ້າ", icon: ScrollText, category: "finance" },
 
   // Housing & Land
   { id: "property-reg", name: "Property Registration", nameLo: "ການຂຶ້ນທະບຽນຊັບສິນ", desc: "Register property ownership", descLo: "ຂຶ້ນທະບຽນກຳມະສິດຊັບສິນ", icon: MapPinned, category: "housing" },
@@ -152,9 +146,9 @@ export const SERVICES: ServiceItem[] = [
   { id: "land-cert", name: "Land Certificate", nameLo: "ໃບຕາດິນ", desc: "Official land title", descLo: "ໃບຕາດິນທາງການ", icon: Map, category: "housing" },
 
   // Safety & Legal
-  { id: "court", name: "Court Services", nameLo: "ບໍລິການສານ", desc: "Court schedules & filings", descLo: "ກຳນົດການ ແລະ ການຍື່ນຄະດີ", icon: Gavel, category: "safety" },
-  { id: "police-report", name: "Police Report", nameLo: "ໃບແຈ້ງຄວາມ", desc: "File a police report", descLo: "ຍື່ນແຈ້ງຄວາມຕໍ່ຕຳຫຼວດ", icon: Siren, category: "safety" },
-  { id: "legal-doc", name: "Legal Document", nameLo: "ເອກະສານກົດໝາຍ", desc: "Notarize legal papers", descLo: "ຮັບຮອງເອກະສານກົດໝາຍ", icon: FileText, category: "safety" },
+  { id: "court", name: "Court Services", nameLo: "ບໍລິການສານ", desc: "Court schedules & filings", descLo: "ກຳນົດການ ແລະ ການຍື່ນຄະດີ", icon: Gavel, category: "civil" },
+  { id: "police-report", name: "Police Report", nameLo: "ໃບແຈ້ງຄວາມ", desc: "File a police report", descLo: "ຍື່ນແຈ້ງຄວາມຕໍ່ຕຳຫຼວດ", icon: Siren, category: "civil" },
+  { id: "legal-doc", name: "Legal Document", nameLo: "ເອກະສານກົດໝາຍ", desc: "Notarize legal papers", descLo: "ຮັບຮອງເອກະສານກົດໝາຍ", icon: FileText, category: "civil" },
 
   // Education
   { id: "enrollment", name: "School Enrollment", nameLo: "ການລົງທະບຽນຮຽນ", desc: "Enroll a student", descLo: "ລົງທະບຽນນັກຮຽນ", icon: School, category: "education" },
@@ -162,8 +156,8 @@ export const SERVICES: ServiceItem[] = [
   { id: "scholarship", name: "Scholarship Application", nameLo: "ການຍື່ນຂໍທຶນການສຶກສາ", desc: "Apply for scholarships", descLo: "ຍື່ນຂໍທຶນການສຶກສາ", icon: GradCap, category: "education" },
 
   // Agriculture
-  { id: "farm-reg", name: "Farm Registration", nameLo: "ການຂຶ້ນທະບຽນຟາມ", desc: "Register agricultural land", descLo: "ຂຶ້ນທະບຽນທີ່ດິນກະສິກຳ", icon: Tractor, category: "agriculture" },
-  { id: "subsidy", name: "Subsidy Application", nameLo: "ການຍື່ນຂໍເງິນອຸດໜູນ", desc: "Apply for farm subsidy", descLo: "ຍື່ນຂໍເງິນອຸດໜູນກະສິກຳ", icon: PiggyBank, category: "agriculture" },
+  { id: "farm-reg", name: "Farm Registration", nameLo: "ການຂຶ້ນທະບຽນຟາມ", desc: "Register agricultural land", descLo: "ຂຶ້ນທະບຽນທີ່ດິນກະສິກຳ", icon: Tractor, category: "housing" },
+  { id: "subsidy", name: "Subsidy Application", nameLo: "ການຍື່ນຂໍເງິນອຸດໜູນ", desc: "Apply for farm subsidy", descLo: "ຍື່ນຂໍເງິນອຸດໜູນກະສິກຳ", icon: PiggyBank, category: "welfare" },
 
   // Welfare
   { id: "social-aid", name: "Social Assistance", nameLo: "ການຊ່ວຍເຫຼືອສັງຄົມ", desc: "Financial aid programs", descLo: "ໂຄງການຊ່ວຍເຫຼືອດ້ານການເງິນ", icon: HandCoins, category: "welfare" },
@@ -171,8 +165,8 @@ export const SERVICES: ServiceItem[] = [
   { id: "child-support", name: "Child Support", nameLo: "ການຊ່ວຍເຫຼືອເດັກ", desc: "Support for families", descLo: "ການຊ່ວຍເຫຼືອສຳລັບຄອບຄົວ", icon: BabyIcon, category: "welfare" },
 
   // Community
-  { id: "forums", name: "Community Forums", nameLo: "ກະດານສົນທະນາຊຸມຊົນ", desc: "Discuss with neighbors", descLo: "ສົນທະນາກັບເພື່ອນບ້ານ", icon: MessageCircle, category: "community" },
-  { id: "village", name: "Village Services", nameLo: "ບໍລິການບ້ານ", desc: "Local village requests", descLo: "ການຮ້ອງຂໍຂັ້ນບ້ານ", icon: MapPin, category: "community" },
+  { id: "forums", name: "Community Forums", nameLo: "ກະດານສົນທະນາຊຸມຊົນ", desc: "Discuss with neighbors", descLo: "ສົນທະນາກັບເພື່ອນບ້ານ", icon: MessageCircle, category: "civil" },
+  { id: "village", name: "Village Services", nameLo: "ບໍລິການບ້ານ", desc: "Local village requests", descLo: "ການຮ້ອງຂໍຂັ້ນບ້ານ", icon: MapPin, category: "civil" },
 ];
 
 export function ServicePage({ onTabChange }: ServicePageProps) {
@@ -265,7 +259,7 @@ export function ServicePage({ onTabChange }: ServicePageProps) {
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
               {t("categories")}
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const count = SERVICES.filter((s) => s.category === cat.id).length;
@@ -273,25 +267,20 @@ export function ServicePage({ onTabChange }: ServicePageProps) {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className="group bg-white rounded-2xl p-4 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
+                    className="group bg-white rounded-2xl p-5 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: cat.bg }}
-                      >
-                        <Icon className="w-5 h-5" style={{ color: cat.color }} />
-                      </div>
+                    <div className="flex items-start justify-between mb-4">
+                      <GlassIcon icon={Icon} color={cat.color} size={56} />
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                     </div>
-                    <p className="text-sm font-semibold text-gray-800 leading-snug">
+                    <p className="text-base font-semibold text-gray-800 leading-snug">
                       {lang === "lo" ? cat.labelLo : cat.label}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                    <p className="text-sm text-gray-400 mt-1 leading-snug">
                       {lang === "lo" ? cat.descLo : cat.desc}
                     </p>
                     <p
-                      className="text-xs mt-3 font-medium"
+                      className="text-sm mt-4 font-medium"
                       style={{ color: count > 0 ? "#344EAD" : "#9CA3AF" }}
                     >
                       {count > 0
@@ -315,44 +304,16 @@ export function ServicePage({ onTabChange }: ServicePageProps) {
             )}
 
             {filteredServices.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredServices.map((s) => {
-                  const Icon = s.icon;
-                  const cat = CATEGORIES.find((c) => c.id === s.category)!;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        if (s.tab) onTabChange(s.tab);
-                      }}
-                      className="bg-white rounded-2xl p-4 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-gray-100 flex items-start gap-3"
-                    >
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: cat.bg }}
-                      >
-                        <Icon className="w-5 h-5" style={{ color: cat.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 leading-snug">
-                          {lang === "lo" ? s.nameLo : s.name}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                          {lang === "lo" ? s.descLo : s.desc}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span
-                            className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                            style={{ backgroundColor: cat.bg, color: cat.color }}
-                          >
-                            {lang === "lo" ? cat.labelLo : cat.label}
-                          </span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {filteredServices.map((s) => (
+                  <ServiceCard
+                    key={s.id}
+                    service={s}
+                    onClick={() => {
+                      if (s.tab) onTabChange(s.tab);
+                    }}
+                  />
+                ))}
               </div>
             ) : (
               <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
