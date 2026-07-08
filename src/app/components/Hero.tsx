@@ -1,10 +1,30 @@
 import { useState } from "react";
-import { ShieldCheck, BadgeCheck, QrCode, X } from "lucide-react";
+import { ShieldCheck, BadgeCheck, QrCode, X, Eye, EyeOff } from "lucide-react";
 import heroBg from "../../imports/hero.png";
 import mohaLogo from "../../imports/moha.png";
 import mopsLogo from "../../imports/mops.png";
 import citizenPhoto from "../../imports/user-photo.png";
 import { useT, useLang } from "../i18n";
+
+/** Mask a value, keeping only the first and last real character visible.
+ *  Separators in `keep` (spaces, dashes) stay so the shape is recognisable.
+ *  e.g. "Bounmy Sisavath" → "B••••• •••••••h" */
+function maskValue(value: string, keep = " ") {
+  const chars = [...value];
+  let first = -1;
+  let last = -1;
+  chars.forEach((c, i) => {
+    if (!keep.includes(c)) {
+      if (first === -1) first = i;
+      last = i;
+    }
+  });
+  return chars
+    .map((c, i) =>
+      keep.includes(c) || i === first || i === last ? c : "•"
+    )
+    .join("");
+}
 
 interface HeroProps {
   greeting: string;
@@ -87,6 +107,9 @@ function LaoIdCard({
   const t = useT("hero");
   const { lang } = useLang();
   const [showQr, setShowQr] = useState(false);
+  // Signed-out cards are fully masked with no controls. Signed in, the name shows
+  // outright and only the UIN keeps a show/hide toggle (hidden by default).
+  const [showUin, setShowUin] = useState(false);
 
   // Logged-in shows the real user; logged-out shows a dummy specimen card.
   const displayName = authenticated
@@ -94,7 +117,7 @@ function LaoIdCard({
     : lang === "lo"
     ? "ບຸນມີ ສີສະຫວັດ"
     : "Bounmy Sisavath";
-  const uin = authenticated ? "1-2540-•••••-15" : "1-2540-08842-15";
+  const uin = "1-2540-08842-15";
   const initial = displayName.trim().charAt(0).toUpperCase();
 
   return (
@@ -141,11 +164,26 @@ function LaoIdCard({
               {initial}
             </div>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-gray-400 text-[11px] uppercase tracking-wide">{t("idName")}</p>
-            <p className="text-gray-900 font-semibold text-lg leading-tight truncate">{displayName}</p>
+            <p className="text-gray-900 font-semibold text-lg leading-tight truncate">
+              {authenticated ? displayName : maskValue(displayName, " ")}
+            </p>
             <p className="text-gray-400 text-[11px] uppercase tracking-wide mt-2">{t("idUin")}</p>
-            <p className="text-gray-700 text-sm font-mono tracking-wider">{uin}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-gray-700 text-sm font-mono tracking-wider">
+                {authenticated && showUin ? uin : maskValue(uin, " -")}
+              </p>
+              {authenticated && (
+                <button
+                  onClick={() => setShowUin((v) => !v)}
+                  aria-label={showUin ? t("idHide") : t("idShow")}
+                  className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  {showUin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
