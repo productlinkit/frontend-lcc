@@ -21,6 +21,7 @@ export const hero = ns({
     idSignIn: "Sign in to activate",
     idVerifyTitle: "In-person verification",
     idVerifyDesc: "Ask the officer to scan this QR code to confirm your identity.",
+    idVerifyClose: "Close",
   },
   lo: {
     tag: "ບໍລິການທາງການຂອງລັດຖະບານ",
@@ -42,5 +43,6 @@ export const hero = ns({
     idSignIn: "ເຂົ້າສູ່ລະບົບເພື່ອເປີດໃຊ້",
     idVerifyTitle: "ການຢືນຢັນຕົວຕໍ່ໜ້າ",
     idVerifyDesc: "ໃຫ້ເຈົ້າໜ້າທີ່ສະແກນ QR ນີ້ ເພື່ອຢືນຢັນຕົວຕົນຂອງທ່ານ.",
+    idVerifyClose: "ປິດ",
   },
 });

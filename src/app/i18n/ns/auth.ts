@@ -77,6 +77,12 @@ export const auth = ns({
     errPasswordMismatch: "Passwords do not match",
     errMustAgree: "You must agree to continue",
     errOtpIncomplete: "Please enter all 6 digits",
+    strengthLabel: "Password strength",
+    strengthWeak: "Weak",
+    strengthFair: "Fair",
+    strengthGood: "Good",
+    strengthStrong: "Strong",
+    passwordMatch: "Passwords match",
   },
   lo: {
     // Left panel
@@ -154,5 +160,11 @@ export const auth = ns({
     errPasswordMismatch: "ລະຫັດຜ່ານບໍ່ກົງກັນ",
     errMustAgree: "ທ່ານຕ້ອງຍອມຮັບເພື່ອສືບຕໍ່",
     errOtpIncomplete: "ກະລຸນາປ້ອນລະຫັດໃຫ້ຄົບ 6 ຕົວ",
+    strengthLabel: "ຄວາມແຂງແຮງລະຫັດຜ່ານ",
+    strengthWeak: "ອ່ອນ",
+    strengthFair: "ພໍໃຊ້",
+    strengthGood: "ດີ",
+    strengthStrong: "ແຂງແຮງ",
+    passwordMatch: "ລະຫັດຜ່ານກົງກັນ",
   },
 });

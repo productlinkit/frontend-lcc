@@ -19,6 +19,7 @@ import {
 import { useT } from "../i18n";
 import residentCertPdf from "../../imports/RC 2026 Report.pdf";
 import userPhoto from "../../imports/user-photo.png";
+import { DialogShell } from "./DialogShell";
 
 const RESIDENT_CERT_REF = "RC-2026-004821";
 
@@ -271,7 +272,12 @@ export function AccountPage() {
 
       {/* Residence Certificate preview */}
       {showCert && (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-black/60">
+        <DialogShell
+          onClose={() => setShowCert(false)}
+          overlayClassName="fixed inset-0 z-[100] flex flex-col bg-black/60"
+          dialogClassName="flex flex-col flex-1 min-h-0"
+          label={`${t("docResidentCert")} · ${RESIDENT_CERT_REF}`}
+        >
           <div className="flex items-center justify-between px-4 py-3 bg-[#344EAD] text-white flex-shrink-0">
             <p className="text-sm font-semibold">
               {t("docResidentCert")} · {RESIDENT_CERT_REF}
@@ -300,7 +306,7 @@ export function AccountPage() {
               className="w-full h-full border-0"
             />
           </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   );

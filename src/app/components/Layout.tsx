@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Home,
   History,
@@ -6,6 +6,11 @@ import {
   User,
   Bell,
   LayoutGrid,
+  FileCheck2,
+  CreditCard,
+  Clock,
+  Megaphone,
+  LogIn,
 } from "lucide-react";
 import logoLcc from "../../imports/logo-lcc.png";
 import { CustomerServiceChat } from "./CustomerServiceChat";
@@ -16,6 +21,7 @@ import { useLang, useT } from "../i18n";
 interface LayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  isAuthenticated?: boolean;
   children: React.ReactNode;
 }
 
@@ -79,7 +85,140 @@ const MAIN_TABS = new Set([
   "account",
 ]);
 
-export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
+/** Header notification bell with a functioning status dropdown (WCAG-labelled). */
+function NotificationMenu({
+  isAuthenticated,
+  onTabChange,
+}: {
+  isAuthenticated: boolean;
+  onTabChange: (tab: string) => void;
+}) {
+  const t = useT("layout");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const items = isAuthenticated
+    ? [
+        { icon: FileCheck2, color: "#16A34A", bg: "#DCFCE7", title: t("notifItem1Title"), desc: t("notifItem1Desc"), time: t("notifItem1Time"), unread: true, tab: "account" },
+        { icon: CreditCard, color: "#344EAD", bg: "#EEF2FF", title: t("notifItem2Title"), desc: t("notifItem2Desc"), time: t("notifItem2Time"), unread: true, tab: "wallet" },
+        { icon: Clock, color: "#F59E0B", bg: "#FEF3C7", title: t("notifItem3Title"), desc: t("notifItem3Desc"), time: t("notifItem3Time"), unread: false, tab: "history" },
+        { icon: Megaphone, color: "#6366F1", bg: "#E0E7FF", title: t("notifAnnounceTitle"), desc: t("notifAnnounceDesc"), time: t("notifAnnounceTime"), unread: false, tab: "service" },
+      ]
+    : [];
+  const unreadCount = items.filter((i) => i.unread).length;
+
+  // Close on outside click and Escape.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t("notifOpen")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="relative w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center transition-all duration-200 focus-ring-on-dark"
+      >
+        <Bell className="w-4 h-4 text-white" />
+        {(!isAuthenticated || unreadCount > 0) && (
+          <span
+            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-white/50"
+            style={{ backgroundColor: "#F59E0B" }}
+          />
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={t("notifications")}
+          className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] lcc-dialog-in"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <p className="text-sm font-semibold text-gray-800">{t("notifications")}</p>
+            {isAuthenticated && unreadCount > 0 && (
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: "#EEF2FF", color: "#344EAD" }}
+              >
+                {unreadCount}
+              </span>
+            )}
+          </div>
+
+          {!isAuthenticated ? (
+            <div className="p-5 text-center">
+              <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: "#EEF2FF" }}>
+                <LogIn className="w-6 h-6" style={{ color: "#344EAD" }} />
+              </div>
+              <p className="text-sm font-semibold text-gray-800">{t("notifSignInTitle")}</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t("notifSignInDesc")}</p>
+              <button
+                onClick={() => { setOpen(false); onTabChange("account"); }}
+                className="mt-4 w-full py-2.5 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#344EAD" }}
+              >
+                {t("notifSignIn")}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                {items.map((it, i) => {
+                  const Icon = it.icon;
+                  return (
+                    <button
+                      key={i}
+                      role="menuitem"
+                      onClick={() => { setOpen(false); onTabChange(it.tab); }}
+                      className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: it.bg }}>
+                        <Icon className="w-4.5 h-4.5" style={{ color: it.color, width: 18, height: 18 }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 leading-snug">{it.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 leading-snug">{it.desc}</p>
+                        <p className="text-[11px] text-gray-400 mt-1">{it.time}</p>
+                      </div>
+                      {it.unread && (
+                        <span className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "#344EAD" }} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => { setOpen(false); onTabChange("history"); }}
+                className="w-full py-3 text-sm font-semibold border-t border-gray-100 transition-colors hover:bg-gray-50"
+                style={{ color: "#344EAD" }}
+              >
+                {t("notifViewAll")}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Layout({ activeTab, onTabChange, isAuthenticated = false, children }: LayoutProps) {
   const { lang, toggle } = useLang();
   const t = useT("layout");
   const isSubPage = !MAIN_TABS.has(activeTab);
@@ -124,7 +263,8 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`flex items-center px-4 py-2 rounded-xl text-sm transition-all duration-200 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex items-center px-4 py-2 rounded-xl text-sm transition-all duration-200 focus-ring-on-dark ${
                     isActive
                       ? "bg-white/20 text-white font-semibold"
                       : "text-white/80 hover:text-white hover:bg-white/10"
@@ -156,13 +296,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
             </button>
 
             {/* Notification */}
-            <button className="relative w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center transition-all duration-200">
-              <Bell className="w-4 h-4 text-white" />
-              <span
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-white/50"
-                style={{ backgroundColor: "#F59E0B" }}
-              />
-            </button>
+            <NotificationMenu isAuthenticated={isAuthenticated} onTabChange={onTabChange} />
           </div>
         </div>
       </header>
@@ -186,6 +320,8 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={t(item.id as "home")}
                 className="flex flex-col items-center gap-1 px-3 py-1"
               >
                 <div

@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Hero } from "./Hero";
+import { DialogShell } from "./DialogShell";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak } from "../serviceConfig";
@@ -823,14 +824,12 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
 
       {/* Dismiss Confirmation Modal */}
       {showDismissConfirm && (
-        <div
-          className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center px-6"
-          onClick={() => setShowDismissConfirm(false)}
+        <DialogShell
+          onClose={() => setShowDismissConfirm(false)}
+          overlayClassName="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center px-6"
+          dialogClassName="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+          label={t("dismissTitle")}
         >
-          <div
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="flex flex-col items-center text-center gap-3 mb-6">
               <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
                 <AlertCircle className="w-7 h-7 text-red-500" />
@@ -860,20 +859,17 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 {t("yesDismiss")}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
       {/* Service Modal */}
       {selectedService && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-6"
-          onClick={() => setSelectedService(null)}
+        <DialogShell
+          onClose={() => setSelectedService(null)}
+          overlayClassName="fixed inset-0 bg-black/50 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-6"
+          dialogClassName="bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl"
+          label={lang === "lo" ? selectedService.nameLo : selectedService.name}
         >
-          <div
-            className="bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 {(() => {
@@ -948,20 +944,17 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             >
               {t("applyNow")}
             </button>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
       {/* Customize Home Services Modal */}
       {showCustomize && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-6"
-          onClick={() => setShowCustomize(false)}
+        <DialogShell
+          onClose={() => setShowCustomize(false)}
+          overlayClassName="fixed inset-0 bg-black/50 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-6"
+          dialogClassName="bg-white w-full lg:max-w-2xl rounded-t-3xl lg:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]"
+          label={t("customizeTitle")}
         >
-          <div
-            className="bg-white w-full lg:max-w-2xl rounded-t-3xl lg:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
             {/* Header */}
             <div className="p-6 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-start justify-between gap-3">
@@ -1085,8 +1078,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 {t("save")}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   );

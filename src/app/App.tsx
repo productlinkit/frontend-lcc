@@ -100,7 +100,7 @@ export default function App() {
   };
 
   return (
-    <Layout activeTab={activeTab} onTabChange={handleTabChange}>
+    <Layout activeTab={activeTab} onTabChange={handleTabChange} isAuthenticated={isAuthenticated}>
       {renderPage()}
     </Layout>
   );

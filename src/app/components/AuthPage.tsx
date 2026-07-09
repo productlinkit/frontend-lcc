@@ -179,6 +179,74 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
     return errs;
   }
 
+  // Real-time (on-blur) validation for a single register field, so users get
+  // recovery guidance before submitting rather than only after.
+  function validateRegField(field: string) {
+    setRegErrors((prev) => {
+      const next = { ...prev };
+      const apply = (key: string, msg: string) => {
+        if (msg) next[key] = msg;
+        else delete next[key];
+      };
+      switch (field) {
+        case "fullName":
+          apply("fullName", !fullName.trim() ? t("errFullNameRequired") : "");
+          break;
+        case "phone":
+          apply(
+            "phone",
+            !phone.trim()
+              ? t("errPhoneRequired")
+              : !/^\+?\d{7,15}$/.test(phone.replace(/\s/g, ""))
+              ? t("errPhoneInvalid")
+              : ""
+          );
+          break;
+        case "email":
+          apply("email", email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? t("errEmailInvalid") : "");
+          break;
+        case "password":
+          apply("password", !password ? "" : password.length < 8 ? t("errPasswordMin") : "");
+          break;
+        case "confirmPassword":
+          apply(
+            "confirmPassword",
+            !confirmPassword ? "" : password !== confirmPassword ? t("errPasswordMismatch") : ""
+          );
+          break;
+      }
+      return next;
+    });
+  }
+
+  // Login field on-blur validation (id + password presence).
+  function validateLoginField(field: string) {
+    setLoginErrors((prev) => {
+      const next = { ...prev };
+      if (field === "loginId") {
+        if (!loginId.trim()) next.loginId = t("errLoginIdRequired");
+        else delete next.loginId;
+      }
+      if (field === "loginPass") {
+        if (!loginPass) next.loginPass = t("errPasswordRequired");
+        else delete next.loginPass;
+      }
+      return next;
+    });
+  }
+
+  // 1–4 strength score, reused by the meter and its text label.
+  const passStrength =
+    password.length >= 12 && /[A-Z]/.test(password) && /\d/.test(password)
+      ? 4
+      : password.length >= 10 && /\d/.test(password)
+      ? 3
+      : password.length >= 8
+      ? 2
+      : 1;
+  const strengthLabels = ["", t("strengthWeak"), t("strengthFair"), t("strengthGood"), t("strengthStrong")];
+  const strengthColors = ["", "#EF4444", "#EF4444", "#F59E0B", "#16A34A"];
+
   function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validateLogin();
@@ -381,6 +449,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("loginIdPlaceholder")}
                           value={loginId}
                           onChange={(e) => { setLoginId(e.target.value); setLoginErrors(x => ({ ...x, loginId: "" })); }}
+                          onBlur={() => validateLoginField("loginId")}
                           className={`${inputBase} pl-10 ${loginErrors.loginId ? errClass : normalClass}`}
                         />
                       </div>
@@ -402,6 +471,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("passwordPlaceholder")}
                           value={loginPass}
                           onChange={(e) => { setLoginPass(e.target.value); setLoginErrors(x => ({ ...x, loginPass: "" })); }}
+                          onBlur={() => validateLoginField("loginPass")}
                           className={`${inputBase} pl-10 pr-10 ${loginErrors.loginPass ? errClass : normalClass}`}
                         />
                         <button
@@ -509,6 +579,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("fullNamePlaceholder")}
                           value={fullName}
                           onChange={(e) => { setFullName(e.target.value); setRegErrors(x => ({ ...x, fullName: "" })); }}
+                          onBlur={() => validateRegField("fullName")}
                           className={`${inputBase} pl-10 ${regErrors.fullName ? errClass : normalClass}`}
                         />
                       </div>
@@ -525,6 +596,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("phonePlaceholder")}
                           value={phone}
                           onChange={(e) => { setPhone(e.target.value); setRegErrors(x => ({ ...x, phone: "" })); }}
+                          onBlur={() => validateRegField("phone")}
                           className={`${inputBase} pl-10 ${regErrors.phone ? errClass : normalClass}`}
                         />
                       </div>
@@ -544,6 +616,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("emailPlaceholder")}
                           value={email}
                           onChange={(e) => { setEmail(e.target.value); setRegErrors(x => ({ ...x, email: "" })); }}
+                          onBlur={() => validateRegField("email")}
                           className={`${inputBase} pl-10 ${regErrors.email ? errClass : normalClass}`}
                         />
                       </div>
@@ -560,6 +633,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("registerPasswordPlaceholder")}
                           value={password}
                           onChange={(e) => { setPassword(e.target.value); setRegErrors(x => ({ ...x, password: "", confirmPassword: "" })); }}
+                          onBlur={() => validateRegField("password")}
                           className={`${inputBase} pl-10 pr-10 ${regErrors.password ? errClass : normalClass}`}
                         />
                         <button
@@ -571,18 +645,18 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         </button>
                       </div>
                       {password && (
-                        <div className="flex gap-1 mt-2">
-                          {[1,2,3,4].map((lvl) => {
-                            const s = password.length >= 12 && /[A-Z]/.test(password) && /\d/.test(password) ? 4
-                              : password.length >= 10 && /\d/.test(password) ? 3
-                              : password.length >= 8 ? 2 : 1;
-                            return (
+                        <>
+                          <div className="flex gap-1 mt-2">
+                            {[1,2,3,4].map((lvl) => (
                               <div key={lvl} className="h-1 flex-1 rounded-full transition-colors"
-                                style={{ backgroundColor: lvl <= s ? s >= 4 ? "#16A34A" : s >= 3 ? "#F59E0B" : "#EF4444" : "#E5E7EB" }}
+                                style={{ backgroundColor: lvl <= passStrength ? strengthColors[passStrength] : "#E5E7EB" }}
                               />
-                            );
-                          })}
-                        </div>
+                            ))}
+                          </div>
+                          <p className="text-xs mt-1.5" style={{ color: strengthColors[passStrength] }}>
+                            {t("strengthLabel")}: <span className="font-semibold">{strengthLabels[passStrength]}</span>
+                          </p>
+                        </>
                       )}
                       <FieldError msg={regErrors.password} />
                     </div>
@@ -597,6 +671,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           placeholder={t("confirmPasswordPlaceholder")}
                           value={confirmPassword}
                           onChange={(e) => { setConfirmPassword(e.target.value); setRegErrors(x => ({ ...x, confirmPassword: "" })); }}
+                          onBlur={() => validateRegField("confirmPassword")}
                           className={`${inputBase} pl-10 pr-16 ${regErrors.confirmPassword ? errClass : normalClass}`}
                         />
                         <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -613,6 +688,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         </div>
                       </div>
                       <FieldError msg={regErrors.confirmPassword} />
+                      {confirmPassword && password === confirmPassword && !regErrors.confirmPassword && (
+                        <p className="flex items-center gap-1 text-xs text-green-600 mt-1.5">
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          {t("passwordMatch")}
+                        </p>
+                      )}
                     </div>
 
                     {/* Agreement checkbox */}

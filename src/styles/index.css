@@ -10,3 +10,43 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Accessibility: always-visible keyboard focus ring (WCAG 2.4.7 / 1.4.11) ──
+   Only shows for keyboard users (:focus-visible), so mouse/touch interaction is
+   visually unchanged. 3px indigo ring meets the 3:1 non-text contrast minimum. */
+:focus-visible {
+  outline: 3px solid #344ead;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* On dark/branded surfaces a white ring keeps the 3:1 ratio. */
+.focus-ring-on-dark:focus-visible {
+  outline-color: #ffffff;
+}
+
+/* ── Modal entrance animation (additive; layout unchanged) ── */
+@keyframes lcc-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lcc-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lcc-overlay-in {
+  animation: lcc-overlay-in 160ms ease-out;
+}
+.lcc-dialog-in {
+  animation: lcc-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .lcc-overlay-in,
+  .lcc-dialog-in {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}

@@ -4,6 +4,7 @@ import heroBg from "../../imports/hero.png";
 import mohaLogo from "../../imports/moha.png";
 import mopsLogo from "../../imports/mops.png";
 import citizenPhoto from "../../imports/user-photo.png";
+import { DialogShell } from "./DialogShell";
 import { useT, useLang } from "../i18n";
 
 /** Mask a value, keeping only the first and last real character visible.
@@ -51,7 +52,7 @@ export function Hero({ greeting, name, authenticated, onSignIn, children }: Hero
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to bottom, rgba(20,35,90,0.60) 0%, rgba(20,35,90,0.72) 60%, rgba(20,35,90,0.82) 100%)",
+            "linear-gradient(to bottom, rgba(18,31,80,0.72) 0%, rgba(18,31,80,0.82) 60%, rgba(18,31,80,0.90) 100%)",
         }}
       />
 
@@ -71,13 +72,13 @@ export function Hero({ greeting, name, authenticated, onSignIn, children }: Hero
               {t("tag")}
             </span>
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-white/70 text-sm">{name ? `${greeting},` : greeting}</p>
+              <p className="text-white/85 text-sm">{name ? `${greeting},` : greeting}</p>
               {name && <p className="text-white text-sm font-semibold">{name}</p>}
             </div>
             <h2 className="text-white max-w-lg leading-snug font-semibold" style={{ fontSize: "1.9rem" }}>
               {t("title")}
             </h2>
-            <p className="text-white/75 text-sm mt-2 max-w-md leading-relaxed">
+            <p className="text-white/90 text-sm mt-2 max-w-md leading-relaxed">
               {t("subtitle")}
             </p>
 
@@ -216,17 +217,15 @@ function LaoIdCard({
 
       {/* QR verification modal */}
       {showQr && (
-        <div
-          className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-6"
-          onClick={() => setShowQr(false)}
+        <DialogShell
+          onClose={() => setShowQr(false)}
+          overlayClassName="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-6"
+          dialogClassName="bg-white rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl"
+          label={t("idVerifyTitle")}
         >
-          <div
-            className="bg-white rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <button
               onClick={() => setShowQr(false)}
-              aria-label="Close"
+              aria-label={t("idVerifyClose")}
               className="ml-auto flex w-8 h-8 rounded-full bg-gray-100 items-center justify-center text-gray-500 hover:text-gray-700"
             >
               <X className="w-4 h-4" />
@@ -236,8 +235,7 @@ function LaoIdCard({
             </div>
             <p className="text-gray-900 font-semibold mt-4">{t("idVerifyTitle")}</p>
             <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">{t("idVerifyDesc")}</p>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   );
