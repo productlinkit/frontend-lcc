@@ -43,7 +43,7 @@ export function ServiceCard({
       </p>
       <p
         className="text-[15px] mt-1 leading-snug transition-colors duration-200"
-        style={{ color: hover ? "rgba(255,255,255,0.72)" : "#9CA3AF" }}
+        style={{ color: hover ? "rgba(255,255,255,0.72)" : "#6B7280" }}
       >
         {lang === "lo" ? service.descLo : service.desc}
       </p>
@@ -54,7 +54,7 @@ export function ServiceCard({
       >
         <span
           className="text-sm font-semibold whitespace-nowrap"
-          style={{ color: hover ? "white" : isFree ? "#16A34A" : "#344EAD" }}
+          style={{ color: hover ? "white" : isFree ? "#15803D" : "#344EAD" }}
         >
           {formatLak(fee, lang)}
         </span>

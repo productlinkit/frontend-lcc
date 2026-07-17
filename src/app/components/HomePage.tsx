@@ -11,9 +11,12 @@ import {
   Settings2,
   Check,
   ChevronDown,
+  LifeBuoy,
 } from "lucide-react";
 import { Hero } from "./Hero";
 import { DialogShell } from "./DialogShell";
+import { Button } from "./Button";
+import { tabHref } from "../routes";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak } from "../serviceConfig";
@@ -255,6 +258,7 @@ interface HomePageProps {
 
 export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
   const t = useT("home");
+  const tc = useT("common");
   const { lang } = useLang();
   const [searchQuery, setSearchQuery] = useState("");
   const [showBanner, setShowBanner] = useState(true);
@@ -347,8 +351,8 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             />
           </div>
           <button
-            className="px-5 py-3 rounded-xl text-white text-sm shadow-md flex-shrink-0 font-medium hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: "#F59E0B" }}
+            className="px-5 py-3 rounded-xl text-sm shadow-md flex-shrink-0 font-medium hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: "#F59E0B", color: "#1F2937" }}
           >
             {t("search")}
           </button>
@@ -413,10 +417,10 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 const cat = CATEGORIES.find((c) => c.id === slide.id);
                 if (!cat) return null;
                 return (
-                  <div
+                  <a
                     key={slide.id}
-                    onClick={() => onTabChange("service")}
-                    className="group relative flex-shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] h-[360px] rounded-3xl overflow-hidden snap-start text-left cursor-pointer"
+                    href={tabHref("service")}
+                    className="group relative flex-shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] h-[360px] rounded-3xl overflow-hidden snap-start text-left cursor-pointer block"
                   >
                     {/* color gradient fallback */}
                     <div
@@ -449,7 +453,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                         <ChevronRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
-                  </div>
+                  </a>
                 );
               })}
             </div>
@@ -586,7 +590,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 className="pointer-events-none absolute -right-6 top-1/2 -translate-y-1/2 h-[115%] lg:h-[165%] w-auto object-contain opacity-[0.14] lg:opacity-25"
               />
               <div className="relative max-w-screen-xl mx-auto">
-                <p className="text-center text-white/60 text-xs font-medium tracking-[0.15em] uppercase mb-7">
+                <p className="text-center text-white/75 text-xs font-medium tracking-[0.15em] uppercase mb-7">
                   {t("statsTitle")}
                 </p>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-7">
@@ -598,7 +602,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                       <p className="text-3xl lg:text-[2.5rem] font-bold leading-none tracking-tight">
                         {s.value}
                       </p>
-                      <p className="text-white/65 text-xs mt-2.5 leading-snug px-2">
+                      <p className="text-white/75 text-xs mt-2.5 leading-snug px-2">
                         {s.label[lang]}
                       </p>
                     </div>
@@ -778,7 +782,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             {/* blue overlay — translucent take on the brand gradient */}
             <div
               className="absolute inset-0"
-              style={{ background: "linear-gradient(135deg, rgba(52,78,173,0.72) 0%, rgba(26,45,122,0.80) 100%)" }}
+              style={{ background: "linear-gradient(135deg, rgba(52,78,173,0.78) 0%, rgba(26,45,122,0.86) 100%)" }}
             />
             {/* decorative glows */}
             <div
@@ -793,13 +797,13 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
               <h2 className="font-bold text-2xl lg:text-3xl leading-tight max-w-2xl mx-auto">
                 {t("ctaTitle")}
               </h2>
-              <p className="text-white/75 text-sm lg:text-base mt-3 max-w-xl mx-auto leading-relaxed">
+              <p className="text-white text-sm lg:text-base mt-3 max-w-xl mx-auto leading-relaxed">
                 {t("ctaDesc")}
               </p>
               <button
                 onClick={() => onTabChange("account")}
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm shadow-lg hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: "#F59E0B", color: "white" }}
+                style={{ backgroundColor: "#F59E0B", color: "#1F2937" }}
               >
                 {t("ctaButton")}
                 <ChevronRight className="w-4 h-4" />
@@ -835,6 +839,17 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 </div>
               );
             })}
+          </div>
+          <div className="text-center mt-6">
+            <a
+              href={tabHref("help")}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold"
+              style={{ color: "#344EAD" }}
+            >
+              <LifeBuoy className="w-4 h-4" aria-hidden />
+              {t("faqBrowseAll")}
+              <ChevronRight className="w-4 h-4" aria-hidden />
+            </a>
           </div>
         </div>
 
@@ -917,6 +932,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
               </div>
               <button
                 onClick={() => setSelectedService(null)}
+                aria-label={tc("close")}
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
               >
                 <X className="w-4 h-4" />
@@ -946,7 +962,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                     <p className="text-xs text-gray-500">{t("serviceFee")}</p>
                     <p
                       className="text-sm font-semibold"
-                      style={{ color: cfg.fee === 0 ? "#16A34A" : "#344EAD" }}
+                      style={{ color: cfg.fee === 0 ? "#15803D" : "#344EAD" }}
                     >
                       {formatLak(cfg.fee, lang)}
                     </p>
@@ -988,6 +1004,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                 </div>
                 <button
                   onClick={() => setShowCustomize(false)}
+                  aria-label={tc("close")}
                   className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
@@ -1085,20 +1102,20 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
-              <button
-                onClick={() => setDraftIds(DEFAULT_HOME_SERVICES)}
-                className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2"
-              >
+              <Button variant="ghost" size="md" onClick={() => setDraftIds(DEFAULT_HOME_SERVICES)}>
                 {t("reset")}
-              </button>
-              <button
-                onClick={saveCustomize}
-                disabled={draftIds.length === 0}
-                className="flex-1 py-3 rounded-xl text-white text-sm font-medium shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: "#344EAD" }}
-              >
-                {t("save")}
-              </button>
+              </Button>
+              <div className="flex-1">
+                <Button
+                  className="shadow-md"
+                  size="lg"
+                  fullWidth
+                  onClick={saveCustomize}
+                  disabled={draftIds.length === 0}
+                >
+                  {t("save")}
+                </Button>
+              </div>
             </div>
         </DialogShell>
       )}

@@ -116,7 +116,7 @@ const STATUS_CONFIG: Record<
   string,
   { bg: string; text: string; ring: string; icon: React.ElementType }
 > = {
-  approved: { bg: "#DCFCE7", text: "#16A34A", ring: "#86EFAC", icon: CheckCircle },
+  approved: { bg: "#DCFCE7", text: "#15803D", ring: "#86EFAC", icon: CheckCircle },
   rejected: { bg: "#FEE2E2", text: "#DC2626", ring: "#FCA5A5", icon: XCircle },
   pending: { bg: "#FEF3C7", text: "#D97706", ring: "#FCD34D", icon: Clock },
 };

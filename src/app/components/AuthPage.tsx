@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import logoLcc from "../../imports/logo-lcc.png";
 import { useT } from "../i18n";
+import { Button } from "./Button";
 
 const BG_IMAGE =
   "https://images.unsplash.com/photo-1723622689088-3b00cce5d5ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxWaWVudGlhbmUlMjBMYW9zJTIwY2l0eXNjYXBlJTIwdGVtcGxlfGVufDF8fHx8MTc4MDkxODgwNnww&ixlib=rb-4.1.0&q=80&w=1080";
@@ -107,6 +108,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
   const t = useT("auth");
   const [mode, setMode] = useState<AuthMode>("login");
   const [step, setStep] = useState<AuthStep>("tabs");
+  const [submitting, setSubmitting] = useState(false);
 
   /* Login */
   const [loginId, setLoginId] = useState("");
@@ -245,21 +247,32 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
       ? 2
       : 1;
   const strengthLabels = ["", t("strengthWeak"), t("strengthFair"), t("strengthGood"), t("strengthStrong")];
+  // Meter bars stay vibrant; the text label uses darker shades so it clears
+  // 4.5:1 on white (WCAG 1.4.3) — #EF4444/#F59E0B/#16A34A only reach 2.1–3.8:1.
   const strengthColors = ["", "#EF4444", "#EF4444", "#F59E0B", "#16A34A"];
+  const strengthTextColors = ["", "#DC2626", "#DC2626", "#B45309", "#15803D"];
 
-  function handleLoginSubmit(e: React.FormEvent) {
+  async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validateLogin();
     if (Object.keys(errs).length) { setLoginErrors(errs); return; }
     setLoginErrors({});
+    // Sending the OTP is a real round-trip; surface it as a loading state
+    // rather than jumping to the next step with no feedback.
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 700));
+    setSubmitting(false);
     setStep("otp");
   }
 
-  function handleRegisterSubmit(e: React.FormEvent) {
+  async function handleRegisterSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validateRegister();
     if (Object.keys(errs).length) { setRegErrors(errs); return; }
     setRegErrors({});
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 700));
+    setSubmitting(false);
     setStep("otp");
   }
 
@@ -477,7 +490,8 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         <button
                           type="button"
                           onClick={() => setShowLoginPass(s => !s)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          aria-label={showLoginPass ? t("hidePassword") : t("showPassword")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600"
                         >
                           {showLoginPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -527,14 +541,15 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     </div>
 
                     {/* Sign In button */}
-                    <button
+                    <Button
                       type="submit"
-                      className="w-full py-3.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: "#344EAD" }}
+                      size="lg"
+                      fullWidth
+                      loading={submitting}
+                      trailingIcon={<ChevronRight className="w-4 h-4" />}
                     >
                       {t("signIn")}
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </Button>
 
                     {/* Divider */}
                     <div className="flex items-center gap-3">
@@ -639,7 +654,8 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         <button
                           type="button"
                           onClick={() => setShowPass(s => !s)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          aria-label={showPass ? t("hidePassword") : t("showPassword")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600"
                         >
                           {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -653,7 +669,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                               />
                             ))}
                           </div>
-                          <p className="text-xs mt-1.5" style={{ color: strengthColors[passStrength] }}>
+                          <p className="text-xs mt-1.5" style={{ color: strengthTextColors[passStrength] }}>
                             {t("strengthLabel")}: <span className="font-semibold">{strengthLabels[passStrength]}</span>
                           </p>
                         </>
@@ -681,7 +697,8 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                           <button
                             type="button"
                             onClick={() => setShowConfirmPass(s => !s)}
-                            className="text-gray-400 hover:text-gray-600"
+                            aria-label={showConfirmPass ? t("hidePassword") : t("showPassword")}
+                            className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600"
                           >
                             {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
@@ -730,14 +747,15 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     </div>
 
                     {/* Submit */}
-                    <button
+                    <Button
                       type="submit"
-                      className="w-full py-3.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: "#344EAD" }}
+                      size="lg"
+                      fullWidth
+                      loading={submitting}
+                      trailingIcon={<ChevronRight className="w-4 h-4" />}
                     >
                       {t("createAccount")}
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </Button>
 
                     <p className="text-center text-xs text-gray-400">
                       {t("haveAccount")}{" "}

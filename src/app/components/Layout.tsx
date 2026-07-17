@@ -16,6 +16,7 @@ import logoLcc from "../../imports/logo-lcc.png";
 import { CustomerServiceChat } from "./CustomerServiceChat";
 import { Footer } from "./Footer";
 import { glassTile } from "../glass";
+import { tabHref } from "../routes";
 import { useLang, useT } from "../i18n";
 
 interface LayoutProps {
@@ -236,9 +237,9 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
         <div className="max-w-screen-xl mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-3">
 
           {/* Left: Logo + Name */}
-          <button
-            className="flex items-center gap-3 flex-shrink-0"
-            onClick={() => onTabChange("home")}
+          <a
+            className="flex items-center gap-3 flex-shrink-0 focus-ring-on-dark"
+            href={tabHref("home")}
           >
             <img
               src={logoLcc}
@@ -249,20 +250,20 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
               <p className="text-white text-sm font-semibold leading-tight tracking-wide">
                 {t("brand")}
               </p>
-              <p className="text-white/60 text-xs leading-tight">
+              <p className="text-white/75 text-xs leading-tight">
                 {t("brandSub")}
               </p>
             </div>
-          </button>
+          </a>
 
           {/* Desktop Nav Links (centered) */}
           <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {NAV_ITEMS.map((item) => {
               const isActive = activeTab === item.id;
               return (
-                <button
+                <a
                   key={item.id}
-                  onClick={() => onTabChange(item.id)}
+                  href={tabHref(item.id)}
                   aria-current={isActive ? "page" : undefined}
                   className={`flex items-center px-4 py-2 rounded-xl text-sm transition-all duration-200 focus-ring-on-dark ${
                     isActive
@@ -271,7 +272,7 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
                   }`}
                 >
                   {t(item.id as "home")}
-                </button>
+                </a>
               );
             })}
           </nav>
@@ -302,7 +303,13 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
       </header>
 
       {/* ── Page Content ── */}
-      <main className={`flex-1 overflow-y-auto ${isSubPage ? "" : "pb-20 lg:pb-0"}`}>
+      {/* pb/scroll-pb must clear the fixed mobile bottom nav (~85px tall), so a
+          control scrolled into view on focus never lands behind it (WCAG 2.4.11). */}
+      <main
+        className={`flex-1 overflow-y-auto ${
+          isSubPage ? "" : "pb-24 scroll-pb-24 lg:pb-0 lg:scroll-pb-0"
+        }`}
+      >
         {children}
         <Footer onTabChange={onTabChange} />
       </main>
@@ -317,9 +324,9 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <button
+              <a
                 key={item.id}
-                onClick={() => onTabChange(item.id)}
+                href={tabHref(item.id)}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={t(item.id as "home")}
                 className="flex flex-col items-center gap-1 px-3 py-1"
@@ -330,7 +337,7 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
                 >
                   <Icon
                     className="w-5 h-5"
-                    style={isActive ? { color: "#344EAD" } : { color: "#9CA3AF" }}
+                    style={isActive ? { color: "#344EAD" } : { color: "#6B7280" }}
                   />
                 </div>
                 <span
@@ -338,12 +345,12 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
                   style={
                     isActive
                       ? { color: "#344EAD", fontWeight: 600 }
-                      : { color: "#9CA3AF" }
+                      : { color: "#6B7280" }
                   }
                 >
                   {t(item.id as "home")}
                 </span>
-              </button>
+              </a>
             );
           })}
         </div>

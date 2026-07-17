@@ -330,6 +330,7 @@ interface TutorialOverlayProps {
 
 export function TutorialOverlay({ onDone }: TutorialOverlayProps) {
   const t = useT("tutorial");
+  const tc = useT("common");
   const [step, setStep] = useState(0);
   const [exiting, setExiting] = useState(false);
 
@@ -378,6 +379,7 @@ export function TutorialOverlay({ onDone }: TutorialOverlayProps) {
           </div>
           <button
             onClick={handleClose}
+            aria-label={tc("close")}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors"
           >
             <X className="w-4 h-4" />

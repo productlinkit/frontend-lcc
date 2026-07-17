@@ -67,7 +67,7 @@ export function Hero({ greeting, name, authenticated, onSignIn, children }: Hero
             </div>
             <span
               className="inline-block text-xs px-3 py-1 rounded-full mb-3 font-medium border border-white/30"
-              style={{ backgroundColor: "rgba(244,163,0,0.25)", color: "#F9D97A" }}
+              style={{ backgroundColor: "rgba(244,163,0,0.25)", color: "#FEF3C7" }}
             >
               {t("tag")}
             </span>

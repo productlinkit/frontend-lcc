@@ -79,6 +79,18 @@
 }
 
 @theme inline {
+  /* ── Accessible muted greys (WCAG 1.4.3) ──
+     Tailwind's stock gray-400 (#99a1af) reaches only 2.6:1 on white and 2.3:1
+     on the app background (#F0F2F8) — well under the 4.5:1 AA minimum, and it
+     is used for ~160 muted labels/placeholders/icons across the app. gray-500
+     (#6a7282) also fails on #F0F2F8 (4.32:1). These overrides are the lightest
+     values that still clear 4.5:1 on white, #F9FAFB and #F0F2F8, so the muted
+     tone is preserved as much as AA allows.
+       gray-400 -> 5.40:1 white / 4.82:1 #F0F2F8
+       gray-500 -> 6.00:1 white / 5.36:1 #F0F2F8 */
+  --color-gray-400: #616b7a;
+  --color-gray-500: #5a6472;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

@@ -24,6 +24,7 @@ import { news } from "./ns/news";
 import { tutorial } from "./ns/tutorial";
 import { chat } from "./ns/chat";
 import { yourId } from "./ns/yourId";
+import { help } from "./ns/help";
 
 export const NAMESPACES = {
   layout,
@@ -47,6 +48,7 @@ export const NAMESPACES = {
   tutorial,
   chat,
   yourId,
+  help,
 } as const;
 
 export type Namespaces = typeof NAMESPACES;

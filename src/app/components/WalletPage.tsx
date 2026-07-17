@@ -219,6 +219,7 @@ export function WalletPage({ isAuthenticated, onRequireAuth }: WalletPageProps) 
               </p>
               <button
                 onClick={() => setShowBalance((s) => !s)}
+                aria-label={showBalance ? t("hideBalance") : t("showBalance")}
                 className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
               >
                 {showBalance ? (

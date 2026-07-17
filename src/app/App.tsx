@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { tabFromHash, navigateTo } from "./routes";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./components/HomePage";
 import { HistoryPage } from "./components/HistoryPage";
@@ -12,6 +13,7 @@ import { MarriageCertificatePage } from "./components/MarriageCertificatePage";
 import { DivorceCertificatePage } from "./components/DivorceCertificatePage";
 import { FamilyBookPage } from "./components/FamilyBookPage";
 import { ServicePage } from "./components/ServicePage";
+import { HelpCenterPage } from "./components/HelpCenterPage";
 
 export type { Lang } from "./i18n";
 
@@ -30,29 +32,54 @@ const PROTECTED_TABS = new Set([
 ]);
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("home");
+  // The URL hash is the source of truth for navigation; state mirrors it.
+  const [activeTab, setActiveTab] = useState(tabFromHash);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
+
+  // hashchange can fire before a re-render publishes new auth state, so read it
+  // through a ref to avoid gating on a stale closure value.
+  const authRef = useRef(isAuthenticated);
+  authRef.current = isAuthenticated;
+  const pendingRef = useRef(pendingTab);
+  pendingRef.current = pendingTab;
 
   // Send the user to login, remembering where they wanted to go.
   function requireAuth(intended: string) {
     setPendingTab(intended);
-    setActiveTab("auth");
+    navigateTo("auth");
   }
+
+  // Apply whatever the URL currently says, enforcing auth gates.
+  useEffect(() => {
+    function applyHash() {
+      const tab = tabFromHash();
+      if (PROTECTED_TABS.has(tab) && !authRef.current) {
+        setPendingTab(tab);
+        navigateTo("auth");
+        return;
+      }
+      setActiveTab(tab);
+    }
+    applyHash(); // handles a deep link on first load
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
 
   function handleTabChange(tab: string) {
     if (PROTECTED_TABS.has(tab) && !isAuthenticated) {
       requireAuth(tab);
     } else {
-      setActiveTab(tab);
+      navigateTo(tab);
     }
   }
 
   function handleAuthSuccess() {
     setIsAuthenticated(true);
-    const dest = pendingTab ?? "account";
+    authRef.current = true; // let the hashchange below pass the auth gate
+    const dest = pendingRef.current ?? "account";
     setPendingTab(null);
-    setActiveTab(dest);
+    navigateTo(dest);
   }
 
   // Auth renders fullscreen — no navbar
@@ -60,7 +87,7 @@ export default function App() {
     return (
       <AuthPage
         onSuccess={handleAuthSuccess}
-        onBack={() => { setPendingTab(null); setActiveTab("home"); }}
+        onBack={() => { setPendingTab(null); navigateTo("home"); }}
       />
     );
   }
@@ -72,17 +99,17 @@ export default function App() {
       case "service":
         return <ServicePage onTabChange={handleTabChange} />;
       case "resident-certificate":
-        return <ResidentCertificatePage onBack={() => setActiveTab("home")} />;
+        return <ResidentCertificatePage onBack={() => navigateTo("home")} />;
       case "birth-declaration":
-        return <BirthDeclarationPage onBack={() => setActiveTab("home")} />;
+        return <BirthDeclarationPage onBack={() => navigateTo("home")} />;
       case "death-declaration":
-        return <DeathDeclarationPage onBack={() => setActiveTab("home")} />;
+        return <DeathDeclarationPage onBack={() => navigateTo("home")} />;
       case "marriage-certificate":
-        return <MarriageCertificatePage onBack={() => setActiveTab("home")} />;
+        return <MarriageCertificatePage onBack={() => navigateTo("home")} />;
       case "divorce-certificate":
-        return <DivorceCertificatePage onBack={() => setActiveTab("home")} />;
+        return <DivorceCertificatePage onBack={() => navigateTo("home")} />;
       case "family-book":
-        return <FamilyBookPage onBack={() => setActiveTab("home")} />;
+        return <FamilyBookPage onBack={() => navigateTo("home")} />;
       case "history":
         return <HistoryPage />;
       case "wallet":
@@ -94,6 +121,8 @@ export default function App() {
         );
       case "account":
         return <AccountPage />;
+      case "help":
+        return <HelpCenterPage onTabChange={handleTabChange} />;
       default:
         return <HomePage onTabChange={handleTabChange} isAuthenticated={isAuthenticated} />;
     }

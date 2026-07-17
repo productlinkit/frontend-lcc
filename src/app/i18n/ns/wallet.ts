@@ -6,6 +6,8 @@ export const wallet = ns({
     title: "My Wallet",
     subtitle: "Manage your bills, payments, and balance",
     availableBalance: "Available balance",
+    showBalance: "Show balance",
+    hideBalance: "Hide balance",
     topUp: "Top up",
     transfer: "Transfer",
 
@@ -75,6 +77,8 @@ export const wallet = ns({
     title: "ກະເປົາເງິນຂອງຂ້ອຍ",
     subtitle: "ຈັດການໃບບິນ, ການຈ່າຍເງິນ ແລະ ຍອດເງິນຂອງທ່ານ",
     availableBalance: "ຍອດເງິນທີ່ໃຊ້ໄດ້",
+    showBalance: "ສະແດງຍອດເງິນ",
+    hideBalance: "ເຊື່ອງຍອດເງິນ",
     topUp: "ຕື່ມເງິນ",
     transfer: "ໂອນເງິນ",
 

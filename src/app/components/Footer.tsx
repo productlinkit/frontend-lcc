@@ -14,9 +14,9 @@ const FOOTER_COLS = [
   {
     title: { en: "Support", lo: "ຊ່ວຍເຫຼືອ" },
     links: [
-      { label: { en: "Help center", lo: "ສູນຊ່ວຍເຫຼືອ" } },
+      { label: { en: "Help center", lo: "ສູນຊ່ວຍເຫຼືອ" }, tab: "help" },
       { label: { en: "Contact us", lo: "ຕິດຕໍ່ພວກເຮົາ" } },
-      { label: { en: "FAQ", lo: "ຄຳຖາມທີ່ພົບເລື້ອຍ" } },
+      { label: { en: "FAQ", lo: "ຄຳຖາມທີ່ພົບເລື້ອຍ" }, tab: "help" },
     ],
   },
   {
