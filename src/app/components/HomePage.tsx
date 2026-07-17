@@ -20,6 +20,8 @@ import { getServiceConfig, formatLak } from "../serviceConfig";
 import { GlassIcon } from "./GlassIcon";
 import { ServiceCard } from "./ServiceCard";
 import { useT, useLang } from "../i18n";
+import laoFlag from "../../imports/lao-flag.png";
+import bgCta from "../../imports/bg-cta.png";
 import civilPopulationImg from "../../imports/civil-population.png";
 import immigrationImg from "../../imports/immigration.png";
 import taxPaymentImg from "../../imports/tax-payment.png";
@@ -429,10 +431,10 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                       loading="lazy"
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    {/* legibility scrim */}
+                    {/* legibility scrim — same blue wash as the hero overlay */}
                     <div
                       className="absolute inset-0"
-                      style={{ background: "linear-gradient(to top, rgba(10,15,40,0.82) 8%, rgba(10,15,40,0.15) 55%, transparent 100%)" }}
+                      style={{ background: "linear-gradient(to top, rgba(18,31,80,0.82) 0%, rgba(18,31,80,0.62) 55%, rgba(18,31,80,0.45) 100%)" }}
                     />
                     {/* content */}
                     <div className="absolute inset-x-0 bottom-0 p-6">
@@ -575,6 +577,13 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
               <div
                 className="pointer-events-none absolute -bottom-24 -left-16 w-64 h-64 rounded-full"
                 style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }}
+              />
+              {/* Lao flag — decorative accent, right side */}
+              <img
+                src={laoFlag}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute -right-6 top-1/2 -translate-y-1/2 h-[115%] lg:h-[165%] w-auto object-contain opacity-[0.14] lg:opacity-25"
               />
               <div className="relative max-w-screen-xl mx-auto">
                 <p className="text-center text-white/60 text-xs font-medium tracking-[0.15em] uppercase mb-7">
@@ -758,6 +767,19 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden"
             style={{ background: "linear-gradient(135deg, #344EAD 0%, #1a2d7a 100%)" }}
           >
+            {/* photo backdrop */}
+            <img
+              src={bgCta}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* blue overlay — translucent take on the brand gradient */}
+            <div
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(135deg, rgba(52,78,173,0.72) 0%, rgba(26,45,122,0.80) 100%)" }}
+            />
             {/* decorative glows */}
             <div
               className="pointer-events-none absolute -top-16 -right-10 w-64 h-64 rounded-full"
