@@ -24,6 +24,7 @@ import {
   FieldError,
   fieldErrorRing,
   isEmpty,
+  scrollToFirstError,
 } from "./formValidation";
 import { SERVICE_CONFIG, getServiceConfig, formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
@@ -541,6 +542,7 @@ export function DivorceCertificatePage({ onBack }: DivorceCertificatePageProps) 
     // Button stays enabled; tapping an incomplete step reveals inline errors.
     if (!canProceed()) {
       setShowErrors(true);
+      scrollToFirstError();
       return;
     }
     setShowErrors(false);

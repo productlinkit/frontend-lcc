@@ -45,7 +45,8 @@ export function fieldErrorRing(hasError: boolean): string {
     : "border-gray-200 focus:border-[#344EAD] focus:ring-2 focus:ring-[#344EAD]/20";
 }
 
-/** Inline "this field is required" message; renders only when `show` is true. */
+/** Inline "this field is required" message; renders only when `show` is true.
+ *  Carries `data-field-error` so scrollToFirstError() can locate it. */
 export function FieldError({
   show,
   message,
@@ -56,9 +57,33 @@ export function FieldError({
   const t = useT("common");
   if (!show) return null;
   return (
-    <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5">
+    <p data-field-error className="flex items-center gap-1 text-xs text-red-500 mt-1.5">
       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
       {message ?? t("fieldRequired")}
     </p>
   );
+}
+
+/**
+ * After a form reveals its errors, jump to the first invalid field: scroll it to
+ * the centre of the viewport and move keyboard focus onto its control. Every
+ * inline error renders a `[data-field-error]` marker (see FieldError), so this
+ * finds the first one in document order — which is the first invalid field.
+ *
+ * Call it right after `setShowErrors(true)`; the rAF waits for React to commit
+ * the newly-rendered error nodes before querying the DOM.
+ */
+export function scrollToFirstError() {
+  requestAnimationFrame(() => {
+    const marker = document.querySelector<HTMLElement>("[data-field-error]");
+    if (!marker) return;
+    // The marker <p> sits inside the field wrapper alongside its label + control.
+    const field = marker.parentElement ?? marker;
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Focus the first VISIBLE control (skips e.g. a hidden file input).
+    const control = Array.from(
+      field.querySelectorAll<HTMLElement>("input, select, textarea, button, [tabindex]")
+    ).find((el) => el.offsetParent !== null && !el.hasAttribute("disabled"));
+    control?.focus({ preventScroll: true });
+  });
 }

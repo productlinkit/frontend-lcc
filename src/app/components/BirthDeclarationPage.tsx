@@ -18,6 +18,7 @@ import {
   FieldError,
   fieldErrorRing,
   isEmpty,
+  scrollToFirstError,
 } from "./formValidation";
 import { useT, useLang } from "../i18n";
 import { formatLak } from "../serviceConfig";
@@ -550,6 +551,7 @@ export function BirthDeclarationPage({ onBack }: BirthDeclarationPageProps) {
     // Button stays enabled; tapping an incomplete step reveals inline errors.
     if (!canProceed()) {
       setShowErrors(true);
+      scrollToFirstError();
       return;
     }
     setShowErrors(false);
