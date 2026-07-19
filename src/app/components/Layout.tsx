@@ -223,8 +223,15 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
   const { lang, toggle } = useLang();
   const t = useT("layout");
   const isSubPage = !MAIN_TABS.has(activeTab);
+  const mainRef = useRef<HTMLElement>(null);
 
   const toggleLang = toggle;
+
+  // Each page should start at the top — the scroll container otherwise keeps the
+  // previous page's offset, landing the user mid-page after navigating.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [activeTab]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#F0F2F8] overflow-hidden">
@@ -306,6 +313,7 @@ export function Layout({ activeTab, onTabChange, isAuthenticated = false, childr
       {/* pb/scroll-pb must clear the fixed mobile bottom nav (~85px tall), so a
           control scrolled into view on focus never lands behind it (WCAG 2.4.11). */}
       <main
+        ref={mainRef}
         className={`flex-1 overflow-y-auto ${
           isSubPage ? "" : "pb-24 scroll-pb-24 lg:pb-0 lg:scroll-pb-0"
         }`}
