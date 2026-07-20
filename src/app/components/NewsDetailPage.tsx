@@ -66,7 +66,7 @@ export function NewsDetailPage({
     <div className="min-h-full bg-[#F0F2F8]">
       {/* Sub-header (non-sticky: a sticky bar would obscure focused controls, WCAG 2.4.11) */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-screen-sm mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="w-full px-4 lg:px-8 py-3 flex items-center gap-3">
           <button
             onClick={onBack}
             aria-label={t("backToNews")}
@@ -78,7 +78,7 @@ export function NewsDetailPage({
         </div>
       </div>
 
-      <article className="max-w-screen-sm mx-auto px-4 py-6">
+      <article className="w-full px-4 lg:px-8 py-6">
         {/* Hero image */}
         <div className="relative rounded-3xl overflow-hidden h-52 sm:h-64">
           <div
