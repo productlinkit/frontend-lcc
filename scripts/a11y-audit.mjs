@@ -18,6 +18,8 @@ const ROUTES = [
   ["Service", "#/service"],
   ["Wallet", "#/wallet"],
   ["Help Center", "#/help"],
+  ["News list", "#/news"],
+  ["News detail", "#/news/1"],
   ["Sign in / Register", "#/signin"],
 ];
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { tabFromHash, navigateTo } from "./routes";
+import { tabFromHash, navigateTo, newsIdFromHash } from "./routes";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./components/HomePage";
 import { HistoryPage } from "./components/HistoryPage";
@@ -14,6 +14,8 @@ import { DivorceCertificatePage } from "./components/DivorceCertificatePage";
 import { FamilyBookPage } from "./components/FamilyBookPage";
 import { ServicePage } from "./components/ServicePage";
 import { HelpCenterPage } from "./components/HelpCenterPage";
+import { NewsPage } from "./components/NewsPage";
+import { NewsDetailPage } from "./components/NewsDetailPage";
 
 export type { Lang } from "./i18n";
 
@@ -34,6 +36,9 @@ const PROTECTED_TABS = new Set([
 export default function App() {
   // The URL hash is the source of truth for navigation; state mirrors it.
   const [activeTab, setActiveTab] = useState(tabFromHash);
+  // Full hash too, so a param-only change (e.g. #/news/1 → #/news/2, same tab)
+  // still re-renders; keyed on the page below to remount the detail view.
+  const [hash, setHash] = useState(() => window.location.hash);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
 
@@ -60,6 +65,7 @@ export default function App() {
         return;
       }
       setActiveTab(tab);
+      setHash(window.location.hash);
     }
     applyHash(); // handles a deep link on first load
     window.addEventListener("hashchange", applyHash);
@@ -123,6 +129,17 @@ export default function App() {
         return <AccountPage />;
       case "help":
         return <HelpCenterPage onTabChange={handleTabChange} />;
+      case "news":
+        return <NewsPage onBack={() => navigateTo("home")} />;
+      case "news-detail":
+        return (
+          <NewsDetailPage
+            key={hash}
+            id={newsIdFromHash()}
+            onBack={() => navigateTo("news")}
+            onOpenTab={handleTabChange}
+          />
+        );
       default:
         return <HomePage onTabChange={handleTabChange} isAuthenticated={isAuthenticated} />;
     }

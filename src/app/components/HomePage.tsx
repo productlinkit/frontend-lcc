@@ -16,7 +16,8 @@ import {
 import { Hero } from "./Hero";
 import { DialogShell } from "./DialogShell";
 import { Button } from "./Button";
-import { tabHref } from "../routes";
+import { tabHref, newsHref } from "../routes";
+import { NEWS_ITEMS, NEWS_CATEGORIES, newsImage } from "../data/newsData";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak } from "../serviceConfig";
@@ -45,108 +46,6 @@ const DEFAULT_HOME_SERVICES = [
 ];
 
 const STORAGE_KEY = "lcc_home_services";
-
-const newsThumb = (id: string) =>
-  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=520&q=70`;
-
-const NEWS_ITEMS = [
-  {
-    id: 1,
-    thumb: newsThumb("1486406146926-c627a92ad1ab"),
-    cat: { en: "System Update", lo: "ອັບເດດລະບົບ" },
-    color: "#344EAD",
-    bg: "#EEF2FF",
-    date: { en: "10 Apr 2026", lo: "10 ເມສາ 2026" },
-    en: {
-      title: "New Digital Identity System launching August 2026",
-      desc: "A comprehensive LaoID framework rolls out nationwide with faster verification.",
-    },
-    lo: {
-      title: "ລະບົບເອກະລັກດິຈິຕອນໃໝ່ ເລີ່ມໃຊ້ ສິງຫາ 2026",
-      desc: "ກອບ LaoID ແບບຄົບວົງຈອນ ເລີ່ມໃຊ້ທົ່ວປະເທດ ພ້ອມການຢືນຢັນທີ່ໄວຂຶ້ນ.",
-    },
-  },
-  {
-    id: 2,
-    thumb: newsThumb("1454165804606-c3d57bc86b40"),
-    cat: { en: "Regulation", lo: "ລະບຽບການ" },
-    color: "#7C3AED",
-    bg: "#EDE9FE",
-    date: { en: "08 Apr 2026", lo: "08 ເມສາ 2026" },
-    en: {
-      title: "Updated Family Registration Law now in effect",
-      desc: "Civil registration procedures are simplified under the revised regulation.",
-    },
-    lo: {
-      title: "ກົດໝາຍທະບຽນຄອບຄົວສະບັບປັບປຸງ ມີຜົນບັງຄັບໃຊ້ແລ້ວ",
-      desc: "ຂັ້ນຕອນການທະບຽນພົນລະເມືອງ ຖືກເຮັດໃຫ້ງ່າຍຂຶ້ນ ຕາມລະບຽບໃໝ່.",
-    },
-  },
-  {
-    id: 3,
-    thumb: newsThumb("1497366754035-f200968a6e72"),
-    cat: { en: "Announcement", lo: "ປະກາດ" },
-    color: "#F59E0B",
-    bg: "#FEF3C7",
-    date: { en: "05 Apr 2026", lo: "05 ເມສາ 2026" },
-    en: {
-      title: "Scheduled maintenance for the e-Governance Portal",
-      desc: "The portal will be briefly unavailable on Sunday, 12 April for upgrades.",
-    },
-    lo: {
-      title: "ການບຳລຸງຮັກສາລະບົບ e-Governance Portal",
-      desc: "ລະບົບຈະບໍ່ສາມາດໃຊ້ໄດ້ຊົ່ວຄາວ ໃນວັນອາທິດທີ 12 ເມສາ ເພື່ອປັບປຸງ.",
-    },
-  },
-  {
-    id: 4,
-    thumb: newsThumb("1519494026892-80bbd2d6fd0d"),
-    cat: { en: "Service", lo: "ບໍລິການ" },
-    color: "#16A34A",
-    bg: "#DCFCE7",
-    date: { en: "02 Apr 2026", lo: "02 ເມສາ 2026" },
-    en: {
-      title: "Residence Certificates now fully online",
-      desc: "Apply, pay and receive your certificate without visiting an office.",
-    },
-    lo: {
-      title: "ໃບຢັ້ງຢືນທີ່ຢູ່ ສາມາດຂໍອອນລາຍໄດ້ທັງໝົດແລ້ວ",
-      desc: "ຍື່ນຂໍ, ຊຳລະ ແລະ ຮັບໃບຢັ້ງຢືນ ໂດຍບໍ່ຕ້ອງໄປຫ້ອງການ.",
-    },
-  },
-  {
-    id: 5,
-    thumb: newsThumb("1487958449943-2429e8be8625"),
-    cat: { en: "Security", lo: "ຄວາມປອດໄພ" },
-    color: "#DC2626",
-    bg: "#FEE2E2",
-    date: { en: "28 Mar 2026", lo: "28 ມີນາ 2026" },
-    en: {
-      title: "Enable two-factor authentication for your account",
-      desc: "Add an extra layer of protection to keep your identity safe.",
-    },
-    lo: {
-      title: "ເປີດໃຊ້ການຢືນຢັນສອງຊັ້ນ ສຳລັບບັນຊີຂອງທ່ານ",
-      desc: "ເພີ່ມການປົກປ້ອງອີກຊັ້ນ ເພື່ອຮັກສາຄວາມປອດໄພຂອງຕົວຕົນ.",
-    },
-  },
-  {
-    id: 6,
-    thumb: newsThumb("1541339907198-e08756dedf3f"),
-    cat: { en: "Event", lo: "ກິດຈະກຳ" },
-    color: "#0EA5E9",
-    bg: "#E0F2FE",
-    date: { en: "24 Mar 2026", lo: "24 ມີນາ 2026" },
-    en: {
-      title: "Digital Government Week 2026 opens in Vientiane",
-      desc: "Join workshops and demos showcasing new public digital services.",
-    },
-    lo: {
-      title: "ອາທິດລັດຖະບານດິຈິຕອນ 2026 ເປີດຂຶ້ນທີ່ ວຽງຈັນ",
-      desc: "ຮ່ວມເຝິກອົບຮົມ ແລະ ການສາທິດ ການບໍລິການສາທາລະນະດິຈິຕອນໃໝ່.",
-    },
-  },
-] as const;
 
 // Quantitative highlights shown below the service list
 const STATS = [
@@ -698,53 +597,57 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none" }}
           >
-            {NEWS_ITEMS.map((item) => (
-              <div
-                key={item.id}
-                className="flex-shrink-0 w-[82%] sm:w-[46%] lg:w-[calc((100%-2rem)/3)] snap-start bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col"
-              >
-                {/* thumbnail */}
-                <div className="relative h-40 w-full overflow-hidden">
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${item.color} 0%, #17235c 100%)` }}
-                  />
-                  <img
-                    src={item.thumb}
-                    alt=""
-                    aria-hidden
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <span
-                    className="absolute top-3 left-3 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                    style={{ backgroundColor: item.bg, color: item.color }}
-                  >
-                    {item.cat[lang]}
-                  </span>
-                </div>
-                {/* body */}
-                <div className="p-4 flex flex-col flex-1">
-                  <p className="text-gray-400 text-xs">{item.date[lang]}</p>
-                  <p className="text-gray-800 text-base font-semibold leading-snug mt-1">
-                    {item[lang].title}
-                  </p>
-                  <p className="text-gray-400 text-sm mt-1.5 leading-relaxed flex-1">
-                    {item[lang].desc}
-                  </p>
-                  <button
-                    className="mt-4 self-start inline-flex items-center gap-1 text-sm font-semibold"
-                    style={{ color: "#344EAD" }}
-                  >
-                    {t("readMore")}
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+            {NEWS_ITEMS.map((item) => {
+              const meta = NEWS_CATEGORIES[item.category];
+              return (
+                <a
+                  key={item.id}
+                  href={newsHref(item.id)}
+                  className="flex-shrink-0 w-[82%] sm:w-[46%] lg:w-[calc((100%-2rem)/3)] snap-start bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col hover:border-gray-200 hover:shadow-md transition-all"
+                >
+                  {/* thumbnail */}
+                  <div className="relative h-40 w-full overflow-hidden">
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(135deg, ${meta.color} 0%, #17235c 100%)` }}
+                    />
+                    <img
+                      src={newsImage(item.img)}
+                      alt=""
+                      aria-hidden
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <span
+                      className="absolute top-3 left-3 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                      style={{ backgroundColor: meta.bg, color: meta.color }}
+                    >
+                      {meta[lang]}
+                    </span>
+                  </div>
+                  {/* body */}
+                  <div className="p-4 flex flex-col flex-1">
+                    <p className="text-gray-500 text-xs">{item.date[lang]}</p>
+                    <p className="text-gray-800 text-base font-semibold leading-snug mt-1">
+                      {item[lang].title}
+                    </p>
+                    <p className="text-gray-500 text-sm mt-1.5 leading-relaxed flex-1">
+                      {item[lang].desc}
+                    </p>
+                    <span
+                      className="mt-4 self-start inline-flex items-center gap-1 text-sm font-semibold"
+                      style={{ color: "#344EAD" }}
+                    >
+                      {t("readMore")}
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </a>
+              );
+            })}
           </div>
 
-          {/* slider controls */}
+          {/* slider controls + view all */}
           <div className="flex items-center justify-center gap-3 mt-6">
             <button
               onClick={() => slideBy(newsRef, -1)}
@@ -762,6 +665,16 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
             >
               <ChevronRight className="w-5 h-5" />
             </button>
+          </div>
+          <div className="text-center mt-4">
+            <a
+              href={tabHref("news")}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold"
+              style={{ color: "#344EAD" }}
+            >
+              {t("newsViewAll")}
+              <ChevronRight className="w-4 h-4" aria-hidden />
+            </a>
           </div>
         </div>
 

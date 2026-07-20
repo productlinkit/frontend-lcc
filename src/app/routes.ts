@@ -16,6 +16,7 @@ export const TAB_TO_PATH: Record<string, string> = {
   wallet: "/wallet",
   account: "/account",
   help: "/help",
+  news: "/news",
   auth: "/signin",
   "resident-certificate": "/service/resident-certificate",
   "birth-declaration": "/service/birth-declaration",
@@ -37,7 +38,20 @@ export function tabHref(tab: string): string {
 /** Current tab derived from window.location.hash. Unknown paths fall back home. */
 export function tabFromHash(): string {
   const raw = window.location.hash.replace(/^#/, "") || "/";
+  // Parameterised route: #/news/<id> renders the detail page.
+  if (/^\/news\/\d+$/.test(raw)) return "news-detail";
   return PATH_TO_TAB[raw] ?? "home";
+}
+
+/** href for a specific news article's detail page. */
+export function newsHref(id: number | string): string {
+  return `#/news/${id}`;
+}
+
+/** Article id when on a #/news/<id> route, else null. */
+export function newsIdFromHash(): number | null {
+  const m = window.location.hash.match(/^#\/news\/(\d+)$/);
+  return m ? Number(m[1]) : null;
 }
 
 /** Navigate by writing the hash; the app's hashchange listener applies it. */
