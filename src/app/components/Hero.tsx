@@ -22,9 +22,7 @@ function maskValue(value: string, keep = " ") {
     }
   });
   return chars
-    .map((c, i) =>
-      keep.includes(c) || i === first || i === last ? c : "•"
-    )
+    .map((c, i) => (keep.includes(c) || i === first || i === last ? c : "•"))
     .join("");
 }
 
@@ -36,7 +34,13 @@ interface HeroProps {
   children?: React.ReactNode;
 }
 
-export function Hero({ greeting, name, authenticated, onSignIn, children }: HeroProps) {
+export function Hero({
+  greeting,
+  name,
+  authenticated,
+  onSignIn,
+  children,
+}: HeroProps) {
   const t = useT("hero");
 
   return (
@@ -63,20 +67,36 @@ export function Hero({ greeting, name, authenticated, onSignIn, children }: Hero
           {/* Left: brand + message + search */}
           <div className="flex-1 min-w-0 flex flex-col items-center lg:items-start text-center lg:text-left">
             <div className="flex items-center justify-center gap-6 mb-4">
-              <img src={mohaLogo} alt="Ministry of Home Affairs" className="h-16 sm:h-20 w-auto object-contain" />
-              <img src={mopsLogo} alt="Ministry of Public Security" className="h-16 sm:h-20 w-auto object-contain" />
+              <img
+                src={mohaLogo}
+                alt="Ministry of Home Affairs"
+                className="h-16 sm:h-20 w-auto object-contain"
+              />
+              <img
+                src={mopsLogo}
+                alt="Ministry of Public Security"
+                className="h-16 sm:h-20 w-auto object-contain"
+              />
             </div>
             <span
               className="inline-block text-xs px-3 py-1 rounded-full mb-3 font-medium border border-white/30"
-              style={{ backgroundColor: "rgba(244,163,0,0.25)", color: "#FEF3C7" }}
-            >
+              style={{
+                backgroundColor: "rgba(244,163,0,0.25)",
+                color: "#FEF3C7",
+              }}>
               {t("tag")}
             </span>
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-white/85 text-sm">{name ? `${greeting},` : greeting}</p>
-              {name && <p className="text-white text-sm font-semibold">{name}</p>}
+              <p className="text-white/85 text-sm">
+                {name ? `${greeting},` : greeting}
+              </p>
+              {name && (
+                <p className="text-white text-sm font-semibold">{name}</p>
+              )}
             </div>
-            <h2 className="text-white max-w-lg leading-snug font-semibold" style={{ fontSize: "1.9rem" }}>
+            <h2
+              className="text-white max-w-lg leading-snug font-semibold"
+              style={{ fontSize: "1.9rem" }}>
               {t("title")}
             </h2>
             <p className="text-white/90 text-sm mt-2 max-w-md leading-relaxed">
@@ -89,7 +109,11 @@ export function Hero({ greeting, name, authenticated, onSignIn, children }: Hero
 
           {/* Right: Digital ID quick-card */}
           <div className="w-full lg:w-[440px] flex justify-center lg:justify-end flex-shrink-0">
-            <LaoIdCard authenticated={Boolean(authenticated)} name={name} onSignIn={onSignIn} />
+            <LaoIdCard
+              authenticated={Boolean(authenticated)}
+              name={name}
+              onSignIn={onSignIn}
+            />
           </div>
         </div>
       </div>
@@ -117,8 +141,8 @@ function LaoIdCard({
   const displayName = authenticated
     ? name || "—"
     : lang === "lo"
-    ? "ບຸນມີ ສີສະຫວັດ"
-    : "Bounmy Sisavath";
+      ? "ບຸນມີ ສີສະຫວັດ"
+      : "Bounmy Sisavath";
   const uin = "1-2540-08842-15";
   const initial = displayName.trim().charAt(0).toUpperCase();
 
@@ -126,18 +150,27 @@ function LaoIdCard({
     <div className="w-full max-w-[440px]">
       {/* ID card */}
       <div className="relative rounded-3xl p-6 shadow-2xl overflow-hidden bg-white border border-white/70">
-        {/* security-pattern background — contained so the ornate border shows; light scrim for legibility */}
-        <img src={idCardBg} alt="" aria-hidden className="pointer-events-none absolute inset-0 w-full h-full object-contain" />
+        {/* security-pattern background — stretched to fill the card while keeping the ornate border; light scrim for legibility */}
+        <img
+          src={idCardBg}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 w-full h-full object-fill"
+        />
         <div className="pointer-events-none absolute inset-0 bg-white/35" />
 
         {/* header */}
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#344EAD" }}>
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: "#344EAD" }}>
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div className="leading-none">
-              <p className="text-gray-900 text-sm font-bold">{t("idCardBrand")}</p>
+              <p className="text-gray-900 text-sm font-bold">
+                {t("idCardBrand")}
+              </p>
               <p className="text-gray-400 text-[11px] mt-1">{t("idCardSub")}</p>
             </div>
           </div>
@@ -158,17 +191,22 @@ function LaoIdCard({
           ) : (
             <div
               className="w-20 h-24 rounded-xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #6366F1 0%, #344EAD 100%)" }}
-            >
+              style={{
+                background: "linear-gradient(135deg, #6366F1 0%, #344EAD 100%)",
+              }}>
               {initial}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-gray-400 text-[11px] uppercase tracking-wide">{t("idName")}</p>
+            <p className="text-gray-400 text-[11px] uppercase tracking-wide">
+              {t("idName")}
+            </p>
             <p className="text-gray-900 font-semibold text-lg leading-tight truncate">
               {authenticated ? displayName : maskValue(displayName, " ")}
             </p>
-            <p className="text-gray-400 text-[11px] uppercase tracking-wide mt-2">{t("idUin")}</p>
+            <p className="text-gray-400 text-[11px] uppercase tracking-wide mt-2">
+              {t("idUin")}
+            </p>
             <div className="flex items-center gap-1.5">
               <p className="text-gray-700 text-sm font-mono tracking-wider">
                 {authenticated && showUin ? uin : maskValue(uin, " -")}
@@ -177,9 +215,12 @@ function LaoIdCard({
                 <button
                   onClick={() => setShowUin((v) => !v)}
                   aria-label={showUin ? t("idHide") : t("idShow")}
-                  className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  {showUin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                  {showUin ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               )}
             </div>
@@ -189,15 +230,18 @@ function LaoIdCard({
         {/* footer: nationality + tappable QR */}
         <div className="relative flex items-end justify-between mt-5">
           <div>
-            <p className="text-gray-400 text-[11px] uppercase tracking-wide">{t("idNationality")}</p>
-            <p className="text-gray-800 text-sm font-medium">{t("idNationalityValue")}</p>
+            <p className="text-gray-400 text-[11px] uppercase tracking-wide">
+              {t("idNationality")}
+            </p>
+            <p className="text-gray-800 text-sm font-medium">
+              {t("idNationalityValue")}
+            </p>
           </div>
           <button
             onClick={() => setShowQr(true)}
             aria-label={t("idTapVerify")}
             className="w-16 h-16 rounded-xl flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: "#344EAD" }}
-          >
+            style={{ backgroundColor: "#344EAD" }}>
             <QrCode className="w-11 h-11 text-white" />
           </button>
         </div>
@@ -207,8 +251,7 @@ function LaoIdCard({
       {!authenticated && (
         <button
           onClick={onSignIn}
-          className="mt-3 w-full text-center text-white/80 hover:text-white text-sm font-medium underline underline-offset-2"
-        >
+          className="mt-3 w-full text-center text-white/80 hover:text-white text-sm font-medium underline underline-offset-2">
           {t("idSignIn")}
         </button>
       )}
@@ -219,20 +262,22 @@ function LaoIdCard({
           onClose={() => setShowQr(false)}
           overlayClassName="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-6"
           dialogClassName="bg-white rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl"
-          label={t("idVerifyTitle")}
-        >
-            <button
-              onClick={() => setShowQr(false)}
-              aria-label={t("idVerifyClose")}
-              className="ml-auto flex w-8 h-8 rounded-full bg-gray-100 items-center justify-center text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="w-48 h-48 mx-auto rounded-2xl border border-gray-200 flex items-center justify-center">
-              <QrCode className="w-40 h-40 text-gray-900" />
-            </div>
-            <p className="text-gray-900 font-semibold mt-4">{t("idVerifyTitle")}</p>
-            <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">{t("idVerifyDesc")}</p>
+          label={t("idVerifyTitle")}>
+          <button
+            onClick={() => setShowQr(false)}
+            aria-label={t("idVerifyClose")}
+            className="ml-auto flex w-8 h-8 rounded-full bg-gray-100 items-center justify-center text-gray-500 hover:text-gray-700">
+            <X className="w-4 h-4" />
+          </button>
+          <div className="w-48 h-48 mx-auto rounded-2xl border border-gray-200 flex items-center justify-center">
+            <QrCode className="w-40 h-40 text-gray-900" />
+          </div>
+          <p className="text-gray-900 font-semibold mt-4">
+            {t("idVerifyTitle")}
+          </p>
+          <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
+            {t("idVerifyDesc")}
+          </p>
         </DialogShell>
       )}
     </div>
