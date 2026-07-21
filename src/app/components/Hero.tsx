@@ -4,6 +4,7 @@ import heroBg from "../../imports/hero.png";
 import mohaLogo from "../../imports/moha.png";
 import mopsLogo from "../../imports/mops.png";
 import citizenPhoto from "../../imports/user-photo.png";
+import idCardBg from "../../imports/bg-id.png";
 import { DialogShell } from "./DialogShell";
 import { useT, useLang } from "../i18n";
 
@@ -124,13 +125,10 @@ function LaoIdCard({
   return (
     <div className="w-full max-w-[440px]">
       {/* ID card */}
-      <div className="relative rounded-3xl p-6 shadow-2xl overflow-hidden bg-white border border-gray-100">
-        {/* aurora glows — brand blue + amber, like the Services section */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-8 -left-6 w-40 h-40 rounded-full blur-3xl" style={{ background: "rgba(96,165,250,0.38)" }} />
-          <div className="absolute -top-6 -right-8 w-40 h-40 rounded-full blur-3xl" style={{ background: "rgba(245,158,11,0.30)" }} />
-          <div className="absolute -bottom-12 left-1/3 w-56 h-40 rounded-full blur-3xl" style={{ background: "rgba(52,78,173,0.18)" }} />
-        </div>
+      <div className="relative rounded-3xl p-6 shadow-2xl overflow-hidden bg-white border border-white/70">
+        {/* security-pattern background + light scrim for legibility */}
+        <img src={idCardBg} alt="" aria-hidden className="pointer-events-none absolute inset-0 w-full h-full object-cover" />
+        <div className="pointer-events-none absolute inset-0 bg-white/55" />
 
         {/* header */}
         <div className="relative flex items-center justify-between">
