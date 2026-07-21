@@ -3,6 +3,7 @@ import { ns } from "../types";
 export const payment = ns({
   en: {
     serviceFee: "Service fee",
+    total: "Total",
     service: "Service",
     methodQr: "QR Code",
     methodBank: "Bank",
@@ -33,6 +34,7 @@ export const payment = ns({
   },
   lo: {
     serviceFee: "ຄ່າທຳນຽມບໍລິການ",
+    total: "ລວມທັງໝົດ",
     service: "ບໍລິການ",
     methodQr: "ລະຫັດ QR",
     methodBank: "ທະນາຄານ",

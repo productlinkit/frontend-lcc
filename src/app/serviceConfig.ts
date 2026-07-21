@@ -43,7 +43,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
   birth: {
-    fee: 0, // free
+    fee: 20000,
     processingTime: { en: "≤ 5 working days", lo: "ບໍ່ເກີນ 5 ວັນລັດຖະການ" },
     requiredDocs: [
       { en: "Hospital / clinic birth record", lo: "ບັນທຶກການເກີດຈາກໂຮງໝໍ / ຄລີນິກ" },
@@ -52,7 +52,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
   death: {
-    fee: 0, // free
+    fee: 20000,
     processingTime: { en: "≤ 5 working days", lo: "ບໍ່ເກີນ 5 ວັນລັດຖະການ" },
     requiredDocs: [
       { en: "Deceased's ID card", lo: "ບັດປະຈຳຕົວຂອງຜູ້ເສຍຊີວິດ" },
@@ -61,7 +61,10 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
   marriage: {
-    fee: 50000, // demo estimate
+    // Base fee = Lao + Lao registration (100,000). The real total is computed in
+    // MarriageCertificatePage from the couple's nationality + whether a betrothal
+    // record is created (see MARRIAGE_FEES). Cards show this base amount.
+    fee: 100000,
     processingTime: { en: "≤ 3 working days", lo: "ບໍ່ເກີນ 3 ວັນລັດຖະການ" },
     requiredDocs: [
       { en: "Application + CV", lo: "ໃບສະໝັກ + ຊີວະປະຫວັດ" },
@@ -72,7 +75,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
   divorce: {
-    fee: 50000, // demo estimate
+    fee: 10000,
     processingTime: { en: "≤ 3 working days", lo: "ບໍ່ເກີນ 3 ວັນລັດຖະການ" },
     requiredDocs: [
       { en: "Divorce application", lo: "ໃບສະໝັກຢ່າຮ້າງ" },
@@ -89,6 +92,19 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
 };
+
+/*
+ * Marriage fee schedule (LAK) — official MoHA rate card. The marriage total is
+ * conditional, so it isn't a single number in SERVICE_CONFIG:
+ *   • Betrothal (Proposal) Record ............ 100,000  (only when creating one)
+ *   • Registration, Lao national + Lao national 100,000
+ *   • Registration, Lao national + foreigner .. 150,000  (resident/alien or from abroad)
+ */
+export const MARRIAGE_FEES = {
+  betrothalRecord: 100000,
+  registrationLaoLao: 100000,
+  registrationForeign: 150000,
+} as const;
 
 export const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   fee: null,

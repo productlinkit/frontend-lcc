@@ -26,7 +26,7 @@ import {
   isEmpty,
   scrollToFirstError,
 } from "./formValidation";
-import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
+import { MARRIAGE_FEES, formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
 
 /*
@@ -531,7 +531,25 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
   });
   const [payment, setPayment] = useState<PaymentState>(blankPayment);
 
-  const fee = SERVICE_CONFIG.marriage.fee ?? 0;
+  // Conditional fee (official rate card): a foreign spouse raises the
+  // registration fee, and creating a new betrothal record adds its own fee.
+  const anyForeign =
+    (Boolean(spouseA.nationality) && spouseA.nationality !== "Lao") ||
+    (Boolean(spouseB.nationality) && spouseB.nationality !== "Lao");
+  const registrationFee = anyForeign
+    ? MARRIAGE_FEES.registrationForeign
+    : MARRIAGE_FEES.registrationLaoLao;
+  const includeBetrothalFee = betrothalMode === "new";
+  const feeBreakdown = [
+    ...(includeBetrothalFee
+      ? [{ label: t("feeBetrothal"), amount: MARRIAGE_FEES.betrothalRecord }]
+      : []),
+    {
+      label: anyForeign ? t("feeRegForeign") : t("feeRegLaoLao"),
+      amount: registrationFee,
+    },
+  ];
+  const fee = feeBreakdown.reduce((sum, i) => sum + i.amount, 0);
 
   const patchA = (patch: Partial<SpouseInfo>) => setSpouseA((p) => ({ ...p, ...patch }));
   const patchB = (patch: Partial<SpouseInfo>) => setSpouseB((p) => ({ ...p, ...patch }));
@@ -1080,6 +1098,13 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
                     [t("reviewWitnesses"), [reg.w1Name, reg.w2Name, reg.w3Name].filter(Boolean).join(", ") || t("dash")],
                   ],
                 },
+                {
+                  title: t("feeSectionTitle"),
+                  rows: [
+                    ...feeBreakdown.map((i) => [i.label, formatLak(i.amount, lang)] as [string, string]),
+                    [t("feeTotal"), formatLak(fee, lang)],
+                  ],
+                },
               ].map((card) => (
                 <div key={card.title} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2.5">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{card.title}</p>
@@ -1102,6 +1127,7 @@ export function MarriageCertificatePage({ onBack }: MarriageCertificatePageProps
               value={payment}
               onChange={(patch) => setPayment((p) => ({ ...p, ...patch }))}
               reference={documentNo}
+              breakdown={feeBreakdown}
             />
           )}
         </div>

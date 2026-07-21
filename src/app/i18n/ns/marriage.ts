@@ -6,6 +6,11 @@ export const marriage = ns({
     title: "Marriage Certificate",
     subtitle: "Online Application",
     serviceName: "Marriage Certificate",
+    feeSectionTitle: "Fees",
+    feeBetrothal: "Betrothal (Proposal) Record",
+    feeRegLaoLao: "Registration · Lao national with Lao national",
+    feeRegForeign: "Registration · Lao national with a foreign spouse",
+    feeTotal: "Total",
 
     // ── Step labels & subtitles ──
     step1Title: "Betrothal record",
@@ -171,6 +176,11 @@ export const marriage = ns({
     title: "ໃບຢັ້ງຢືນການແຕ່ງງານ",
     subtitle: "ການຍື່ນຄຳຮ້ອງອອນລາຍ",
     serviceName: "ໃບຢັ້ງຢືນການແຕ່ງງານ",
+    feeSectionTitle: "ຄ່າທຳນຽມ",
+    feeBetrothal: "ບົດບັນທຶກການໝັ້ນໝາຍ",
+    feeRegLaoLao: "ຈົດທະບຽນ · ຄົນລາວ ກັບ ຄົນລາວ",
+    feeRegForeign: "ຈົດທະບຽນ · ຄົນລາວ ກັບ ຄູ່ຄອງຄົນຕ່າງປະເທດ",
+    feeTotal: "ລວມທັງໝົດ",
 
     // ── Step labels & subtitles ──
     step1Title: "ບົດບັນທຶກການໝັ້ນໝາຍ",

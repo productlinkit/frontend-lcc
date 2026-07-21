@@ -109,11 +109,14 @@ interface PaymentSectionProps {
   value: PaymentState;
   onChange: (patch: Partial<PaymentState>) => void;
   reference?: string;
+  /** Optional itemised fees; when 2+ items are given, the summary lists them. */
+  breakdown?: { label: string; amount: number }[];
 }
 
-export function PaymentSection({ amount, serviceName, value, onChange, reference }: PaymentSectionProps) {
+export function PaymentSection({ amount, serviceName, value, onChange, reference, breakdown }: PaymentSectionProps) {
   const t = useT("payment");
   const { lang } = useLang();
+  const showBreakdown = Boolean(breakdown && breakdown.length > 1);
   const showErrors = useShowErrors();
   const bankErr = showErrors && value.method === "bank" && !value.bankName;
   const numErr = showErrors && value.method === "cc" && value.cardNumber.replace(/\s/g, "").length !== 16;
@@ -123,15 +126,31 @@ export function PaymentSection({ amount, serviceName, value, onChange, reference
   return (
     <div className="space-y-5">
       {/* Summary */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500 mb-0.5">{t("serviceFee")}</p>
-          <p className="text-2xl font-bold" style={{ color: "#344EAD" }}>{formatLak(amount, lang)}</p>
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">{t("serviceFee")}</p>
+            <p className="text-2xl font-bold" style={{ color: "#344EAD" }}>{formatLak(amount, lang)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 mb-0.5">{t("service")}</p>
+            <p className="text-sm font-semibold text-gray-700">{serviceName}</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-500 mb-0.5">{t("service")}</p>
-          <p className="text-sm font-semibold text-gray-700">{serviceName}</p>
-        </div>
+        {showBreakdown && (
+          <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+            {breakdown!.map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-500">{item.label}</span>
+                <span className="text-sm font-medium text-gray-700">{formatLak(item.amount, lang)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+              <span className="text-sm font-semibold text-gray-800">{t("total")}</span>
+              <span className="text-sm font-bold" style={{ color: "#344EAD" }}>{formatLak(amount, lang)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Method toggle — QR / Bank / Card */}
