@@ -48,6 +48,7 @@ export const history = ns({
     overallProgress: "Overall progress",
 
     // Actions
+    viewDocument: "View document",
     downloadDocument: "Download document",
     fixAndResubmit: "Fix & resubmit",
     refreshStatus: "Refresh status",
@@ -149,6 +150,7 @@ export const history = ns({
     overallProgress: "ຄວາມຄືບໜ້າລວມ",
 
     // Actions
+    viewDocument: "ເບິ່ງເອກະສານ",
     downloadDocument: "ດາວໂຫຼດເອກະສານ",
     fixAndResubmit: "ແກ້ໄຂ ແລະ ຍື່ນຄືນ",
     refreshStatus: "ໂຫຼດສະຖານະໃໝ່",

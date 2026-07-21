@@ -14,16 +14,27 @@ import {
   CreditCard,
   Eye,
   Download,
-  X,
 } from "lucide-react";
 import { useT } from "../i18n";
 import residentCertPdf from "../../imports/RC 2026 Report.pdf";
 import userPhoto from "../../imports/user-photo.png";
-import { DialogShell } from "./DialogShell";
+import { DocumentViewer } from "./DocumentViewer";
+import { ACCOUNT_DOC_SPECS } from "../data/documents";
+import { generateDocumentPdf } from "../lib/document";
 
 const RESIDENT_CERT_REF = "RC-2026-004821";
 
 const PROFILE_PHOTO = userPhoto;
+
+function triggerDownload(href: string, filename: string) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 const DOCUMENTS = [
   {
@@ -47,22 +58,27 @@ const DOCUMENTS = [
   },
 ] as const;
 
+type DocDef = (typeof DOCUMENTS)[number];
+
 export function AccountPage() {
   const t = useT("account");
-  const [showCert, setShowCert] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<DocDef | null>(null);
 
-  const handleView = (kind?: string) => {
-    if (kind === "resident") setShowCert(true);
-  };
-  const handleDownload = (kind?: string) => {
-    if (kind !== "resident") return;
-    const a = document.createElement("a");
-    a.href = residentCertPdf;
-    a.download = `${RESIDENT_CERT_REF}.pdf`;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const isResident = (doc: DocDef) => doc.id === "doc-rc";
+
+  const handleView = (doc: DocDef) => setViewingDoc(doc);
+
+  const handleDownload = (doc: DocDef) => {
+    const filename = `${doc.number}.pdf`;
+    if (isResident(doc)) {
+      triggerDownload(residentCertPdf, filename);
+      return;
+    }
+    const spec = ACCOUNT_DOC_SPECS[doc.id];
+    if (!spec) return;
+    const url = URL.createObjectURL(generateDocumentPdf(spec));
+    triggerDownload(url, filename);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
   const settingsItems = [
@@ -197,14 +213,14 @@ export function AccountPage() {
                     </p>
                     <div className="flex gap-2 mt-2.5">
                       <button
-                        onClick={() => handleView((doc as { kind?: string }).kind)}
+                        onClick={() => handleView(doc)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         {t("view")}
                       </button>
                       <button
-                        onClick={() => handleDownload((doc as { kind?: string }).kind)}
+                        onClick={() => handleDownload(doc)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
                         style={{ backgroundColor: "#344EAD" }}
                       >
@@ -270,43 +286,15 @@ export function AccountPage() {
         <div className="h-4" />
       </div>
 
-      {/* Residence Certificate preview */}
-      {showCert && (
-        <DialogShell
-          onClose={() => setShowCert(false)}
-          overlayClassName="fixed inset-0 z-[100] flex flex-col bg-black/60"
-          dialogClassName="flex flex-col flex-1 min-h-0"
-          label={`${t("docResidentCert")} · ${RESIDENT_CERT_REF}`}
-        >
-          <div className="flex items-center justify-between px-4 py-3 bg-[#344EAD] text-white flex-shrink-0">
-            <p className="text-sm font-semibold">
-              {t("docResidentCert")} · {RESIDENT_CERT_REF}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleDownload("resident")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 border border-white/20 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                {t("download")}
-              </button>
-              <button
-                onClick={() => setShowCert(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/15 hover:bg-white/25 border border-white/20 transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-auto bg-gray-200">
-            <iframe
-              title={RESIDENT_CERT_REF}
-              src={residentCertPdf}
-              className="w-full h-full border-0"
-            />
-          </div>
-        </DialogShell>
+      {/* Document viewer — real PDF for the Residence Certificate, generated for the rest */}
+      {viewingDoc && (
+        <DocumentViewer
+          title={`${t(viewingDoc.nameKey)} · ${viewingDoc.number}`}
+          staticUrl={isResident(viewingDoc) ? residentCertPdf : undefined}
+          spec={isResident(viewingDoc) ? undefined : ACCOUNT_DOC_SPECS[viewingDoc.id]}
+          downloadName={`${viewingDoc.number}.pdf`}
+          onClose={() => setViewingDoc(null)}
+        />
       )}
     </div>
   );

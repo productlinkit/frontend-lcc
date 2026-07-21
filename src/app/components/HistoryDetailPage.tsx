@@ -11,11 +11,17 @@ import {
   Hash,
   RefreshCw,
   Download,
+  Eye,
   MessageSquare,
   Upload,
   ListChecks,
 } from "lucide-react";
+import { useState } from "react";
 import { useT } from "../i18n";
+import { DocumentViewer } from "./DocumentViewer";
+import { serviceDocSpec } from "../data/documents";
+import { generateDocumentPdf } from "../lib/document";
+import residentCertPdf from "../../imports/RC 2026 Report.pdf";
 
 export interface HistoryStep {
   /** translation key for the step label */
@@ -82,8 +88,29 @@ const STATUS_THEME = {
 
 export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
   const t = useT("history");
+  const [viewing, setViewing] = useState(false);
   const theme = STATUS_THEME[item.status];
   const StatusIcon = theme.icon;
+
+  // The Residence Certificate has a real PDF asset; other approved services get a
+  // generated dummy certificate.
+  const isResident = item.service === "serviceResidentCertificate";
+  const docTitle = `${t(item.service as "serviceResidentCertificate")} · ${item.refNo}`;
+
+  const handleDownload = () => {
+    const filename = `${item.refNo}.pdf`;
+    const href = isResident
+      ? residentCertPdf
+      : URL.createObjectURL(generateDocumentPdf(serviceDocSpec(item.service, item.refNo)));
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    if (!isResident) setTimeout(() => URL.revokeObjectURL(href), 4000);
+  };
 
   const progressPct = Math.round(
     ((item.currentStep + 1) / item.steps.length) * 100
@@ -178,13 +205,23 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
           {/* Action row */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 mt-5 pt-5 border-t border-gray-100">
             {item.status === "approved" && (
-              <button
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: "#344EAD" }}
-              >
-                <Download className="w-4 h-4" />
-                {t("downloadDocument")}
-              </button>
+              <>
+                <button
+                  onClick={() => setViewing(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: "#344EAD" }}
+                >
+                  <Eye className="w-4 h-4" />
+                  {t("viewDocument")}
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  {t("downloadDocument")}
+                </button>
+              </>
             )}
             {item.status === "rejected" && (
               <button
@@ -387,6 +424,16 @@ export function HistoryDetailPage({ item, onBack }: HistoryDetailPageProps) {
 
         <div className="h-4" />
       </div>
+
+      {viewing && (
+        <DocumentViewer
+          title={docTitle}
+          staticUrl={isResident ? residentCertPdf : undefined}
+          spec={isResident ? undefined : serviceDocSpec(item.service, item.refNo)}
+          downloadName={`${item.refNo}.pdf`}
+          onClose={() => setViewing(false)}
+        />
+      )}
     </div>
   );
 }
