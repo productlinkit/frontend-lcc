@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GlassIcon } from "./GlassIcon";
 import { CATEGORIES, type ServiceItem } from "./ServicePage";
-import { getServiceConfig, formatLak } from "../serviceConfig";
+import { getServiceConfig, formatFee } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
 
 /** Shared service tile — used on the home menu and the Service page list. */
@@ -18,8 +18,8 @@ export function ServiceCard({
 
   const cat = CATEGORIES.find((c) => c.id === service.category)!;
   const Icon = service.icon;
-  const fee = getServiceConfig(service.id).fee;
-  const isFree = fee === 0;
+  const cfg = getServiceConfig(service.id);
+  const isFree = cfg.fee === 0 && cfg.feeMax == null;
 
   return (
     <div
@@ -56,7 +56,7 @@ export function ServiceCard({
           className="text-sm font-semibold whitespace-nowrap"
           style={{ color: hover ? "white" : isFree ? "#15803D" : "#344EAD" }}
         >
-          {formatLak(fee, lang)}
+          {formatFee(cfg, lang)}
         </span>
         <span
           className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-colors duration-200"

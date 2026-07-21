@@ -21,6 +21,8 @@ export interface Bilingual {
 
 export interface ServiceConfig {
   fee: number | null;
+  /** Upper bound when the fee is conditional (e.g. marriage). Shown as a range. */
+  feeMax?: number;
   processingTime: Bilingual;
   requiredDocs: Bilingual[];
 }
@@ -30,6 +32,16 @@ export function formatLak(n: number | null, lang: Lang = "en"): string {
   if (n === 0) return lang === "lo" ? "ຟຣີ" : "Free";
   const num = n.toLocaleString("en-US");
   return lang === "lo" ? `${num} ກີບ` : `${num} LAK`;
+}
+
+/** Fee label for a service — a range when `feeMax` is set, otherwise a single amount. */
+export function formatFee(cfg: ServiceConfig, lang: Lang = "en"): string {
+  if (cfg.feeMax != null && cfg.fee != null && cfg.feeMax > cfg.fee) {
+    const lo = cfg.fee.toLocaleString("en-US");
+    const hi = cfg.feeMax.toLocaleString("en-US");
+    return lang === "lo" ? `${lo}–${hi} ກີບ` : `${lo}–${hi} LAK`;
+  }
+  return formatLak(cfg.fee, lang);
 }
 
 export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
@@ -61,10 +73,12 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
     ],
   },
   marriage: {
-    // Base fee = Lao + Lao registration (100,000). The real total is computed in
-    // MarriageCertificatePage from the couple's nationality + whether a betrothal
-    // record is created (see MARRIAGE_FEES). Cards show this base amount.
+    // Conditional fee — the real total is computed in MarriageCertificatePage
+    // from the couple's nationality + whether a betrothal record is created
+    // (see MARRIAGE_FEES). Cards show the range: 100,000 (Lao+Lao, linked
+    // betrothal) up to 250,000 (foreign spouse + new betrothal record).
     fee: 100000,
+    feeMax: 250000,
     processingTime: { en: "≤ 3 working days", lo: "ບໍ່ເກີນ 3 ວັນລັດຖະການ" },
     requiredDocs: [
       { en: "Application + CV", lo: "ໃບສະໝັກ + ຊີວະປະຫວັດ" },

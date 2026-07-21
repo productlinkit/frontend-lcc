@@ -20,7 +20,7 @@ import { tabHref, newsHref } from "../routes";
 import { NEWS_ITEMS, NEWS_CATEGORIES, newsImage } from "../data/newsData";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
-import { getServiceConfig, formatLak } from "../serviceConfig";
+import { getServiceConfig, formatLak, formatFee } from "../serviceConfig";
 import { GlassIcon } from "./GlassIcon";
 import { ServiceCard } from "./ServiceCard";
 import { useT, useLang } from "../i18n";
@@ -875,9 +875,9 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
                     <p className="text-xs text-gray-500">{t("serviceFee")}</p>
                     <p
                       className="text-sm font-semibold"
-                      style={{ color: cfg.fee === 0 ? "#15803D" : "#344EAD" }}
+                      style={{ color: cfg.fee === 0 && cfg.feeMax == null ? "#15803D" : "#344EAD" }}
                     >
-                      {formatLak(cfg.fee, lang)}
+                      {formatFee(cfg, lang)}
                     </p>
                   </div>
                 </div>
