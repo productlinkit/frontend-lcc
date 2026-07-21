@@ -4,7 +4,7 @@ import heroBg from "../../imports/hero.png";
 import mohaLogo from "../../imports/moha.png";
 import mopsLogo from "../../imports/mops.png";
 import citizenPhoto from "../../imports/user-photo.png";
-import idCardBg from "../../imports/bg-id.png";
+import idCardBg from "../../imports/bg-id.jpg";
 import { DialogShell } from "./DialogShell";
 import { useT, useLang } from "../i18n";
 
@@ -126,9 +126,9 @@ function LaoIdCard({
     <div className="w-full max-w-[440px]">
       {/* ID card */}
       <div className="relative rounded-3xl p-6 shadow-2xl overflow-hidden bg-white border border-white/70">
-        {/* security-pattern background + light scrim for legibility */}
-        <img src={idCardBg} alt="" aria-hidden className="pointer-events-none absolute inset-0 w-full h-full object-cover" />
-        <div className="pointer-events-none absolute inset-0 bg-white/55" />
+        {/* security-pattern background — contained so the ornate border shows; light scrim for legibility */}
+        <img src={idCardBg} alt="" aria-hidden className="pointer-events-none absolute inset-0 w-full h-full object-contain" />
+        <div className="pointer-events-none absolute inset-0 bg-white/35" />
 
         {/* header */}
         <div className="relative flex items-center justify-between">
