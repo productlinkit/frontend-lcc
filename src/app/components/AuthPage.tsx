@@ -10,10 +10,18 @@ import {
   CheckCircle,
   RefreshCw,
   ChevronRight,
+  MessageSquare,
+  AlertCircle,
+  Info,
 } from "lucide-react";
 import logoLcc from "../../imports/logo-lcc.png";
-import { useT } from "../i18n";
+import { useT, useLang } from "../i18n";
 import { Button } from "./Button";
+import { ApiError } from "../api/client";
+import { auth } from "../api/endpoints";
+import { useMutation } from "../api/hooks";
+import { useSession } from "../api/session";
+import type { Lang, OTPChallenge, RegisterResult } from "../api/types";
 
 const BG_IMAGE =
   "https://images.unsplash.com/photo-1723622689088-3b00cce5d5ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxWaWVudGlhbmUlMjBMYW9zJTIwY2l0eXNjYXBlJTIwdGVtcGxlfGVufDF8fHx8MTc4MDkxODgwNnww&ixlib=rb-4.1.0&q=80&w=1080";
@@ -23,8 +31,52 @@ interface AuthPageProps {
   onBack: () => void;
 }
 
-type AuthStep = "tabs" | "otp";
+type AuthStep = "tabs" | "otp" | "reset";
 type AuthMode = "login" | "register";
+/** Which one-time-code flow the OTP screen is currently serving. */
+type OtpPurpose = "login" | "register";
+
+/*
+ * Wording that only exists on this screen (the OTP-by-SMS entry point, the
+ * password-reset step and the non-production dev_code hint). The shared i18n
+ * dictionary is owned elsewhere, so these few strings stay bilingual here.
+ */
+const COPY = {
+  otpSignIn: { en: "Sign in with an SMS code", lo: "ເຂົ້າສູ່ລະບົບດ້ວຍລະຫັດ SMS" },
+  otpResent: {
+    en: "A new code is on its way to your inbox.",
+    lo: "ລະຫັດໃໝ່ກຳລັງສົ່ງໄປຫາອີເມວຂອງທ່ານ.",
+  },
+  resetTitle: { en: "Reset your password", lo: "ຕັ້ງລະຫັດຜ່ານໃໝ່" },
+  resetSub: {
+    en: "Enter the code we sent and choose a new password.",
+    lo: "ປ້ອນລະຫັດທີ່ພວກເຮົາສົ່ງໃຫ້ ແລະ ຕັ້ງລະຫັດຜ່ານໃໝ່.",
+  },
+  newPassword: { en: "New password", lo: "ລະຫັດຜ່ານໃໝ່" },
+  confirmNewPassword: { en: "Confirm new password", lo: "ຢືນຢັນລະຫັດຜ່ານໃໝ່" },
+  savePassword: { en: "Save new password", lo: "ບັນທຶກລະຫັດຜ່ານໃໝ່" },
+  resetDone: {
+    en: "Password updated — sign in with your new password.",
+    lo: "ປ່ຽນລະຫັດຜ່ານແລ້ວ — ເຂົ້າສູ່ລະບົບດ້ວຍລະຫັດຜ່ານໃໝ່.",
+  },
+  phoneNeeded: {
+    en: "Enter your phone number first.",
+    lo: "ກະລຸນາປ້ອນເບີໂທລະສັບຂອງທ່ານກ່ອນ.",
+  },
+} as const;
+
+/** The API takes a bare phone number; the field accepts spaces and dashes. */
+function normalizePhone(value: string) {
+  return value.replace(/[\s()-]/g, "").trim();
+}
+
+// Register answers with { citizen_id, challenge } while request-otp and
+// forgot-password answer with the challenge itself. This normalises both to the
+// challenge before reading phone / dev_code.
+function asChallenge(response: OTPChallenge | RegisterResult): OTPChallenge {
+  const nested = (response as { challenge?: OTPChallenge }).challenge;
+  return nested ?? (response as OTPChallenge);
+}
 
 function generateMath() {
   const a = Math.floor(Math.random() * 9) + 1;
@@ -52,6 +104,27 @@ function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
     <p className="text-red-500 text-xs mt-1.5">{msg}</p>
+  );
+}
+
+/** Whatever the API said went wrong, in the form's own visual language. */
+function ApiNotice({ msg, tone = "error" }: { msg?: string; tone?: "error" | "info" | "success" }) {
+  if (!msg) return null;
+  const styles =
+    tone === "error"
+      ? { wrap: "bg-red-50 border-red-200 text-red-600", Icon: AlertCircle }
+      : tone === "success"
+      ? { wrap: "bg-green-50 border-green-200 text-green-700", Icon: CheckCircle }
+      : { wrap: "bg-[#EEF2FF] border-[#C7D2FE] text-[#344EAD]", Icon: Info };
+  const { Icon } = styles;
+  return (
+    <div
+      role="alert"
+      className={`flex items-start gap-2 p-3 rounded-xl border text-xs leading-relaxed ${styles.wrap}`}
+    >
+      <Icon className="w-4 h-4 flex-shrink-0 mt-px" aria-hidden />
+      <span>{msg}</span>
+    </div>
   );
 }
 
@@ -106,9 +179,17 @@ function LeftPanel() {
 
 export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
   const t = useT("auth");
+  const tc = useT("common");
+  const { lang } = useLang();
+  const { signIn } = useSession();
+  const c = (key: keyof typeof COPY, params?: Record<string, string>) => {
+    let str: string = (COPY[key] as Record<Lang, string>)[lang as Lang];
+    if (params) for (const p in params) str = str.split(`{${p}}`).join(params[p]);
+    return str;
+  };
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [step, setStep] = useState<AuthStep>("tabs");
-  const [submitting, setSubmitting] = useState(false);
 
   /* Login */
   const [loginId, setLoginId] = useState("");
@@ -133,23 +214,69 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
   const [otpResent, setOtpResent] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendNonce, setResendNonce] = useState(0);
   const [countdown, setCountdown] = useState(60);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [otpPurpose, setOtpPurpose] = useState<OtpPurpose>("login");
+
+  /* The live conversation with the API */
+  // The phone the challenge was issued for, exactly as the API normalised it.
+  const [pendingPhone, setPendingPhone] = useState("");
+  // What the API echoes back for display — already masked (+856********45).
+  const [challengePhone, setChallengePhone] = useState("");
+  // Outside production the API hands back the code so the demo is usable.
+  const [notice, setNotice] = useState("");
+  const [formError, setFormError] = useState("");
+
+  /* Reset password */
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [resetError, setResetError] = useState("");
+
+  const loginRequest = useMutation((body: { phone: string; password: string }) => auth.login(body));
+  const registerRequest = useMutation(
+    (body: { phone: string; name: string; password: string; email?: string }) => auth.register(body),
+  );
+  const otpRequest = useMutation((body: { phone: string; purpose: string }) => auth.requestOTP(body));
+  const otpVerify = useMutation((body: { phone: string; code: string; purpose: string }) =>
+    auth.verifyOTP(body),
+  );
+  const forgotRequest = useMutation((phone: string) => auth.forgotPassword({ phone }));
+  const resetRequest = useMutation((body: { phone: string; code: string; new_password: string }) =>
+    auth.resetPassword(body),
+  );
+
+  const submitting =
+    loginRequest.pending || registerRequest.pending || otpRequest.pending || forgotRequest.pending;
 
   useEffect(() => {
-    if (step !== "otp") return;
+    if (step !== "otp" && step !== "reset") return;
     setCountdown(60);
     const id = setInterval(() => {
       setCountdown((c) => { if (c <= 1) { clearInterval(id); return 0; } return c - 1; });
     }, 1000);
     return () => clearInterval(id);
-  }, [step, otpResent]);
+    // resendNonce bumps on every resend so the timer restarts from 60.
+  }, [step, resendNonce]);
 
-  const maskedContact = mode === "login"
-    ? loginId.includes("@")
-      ? loginId.replace(/(.{2}).+(@.+)/, "$1****$2")
-      : loginId.replace(/(\+?\d{3})\d+(\d{3})/, "$1 **** $2")
-    : phone.replace(/(\+?\d{3})\d+(\d{2})/, "$1 **** $2");
+  // The API masks the number it actually sent to; fall back to masking locally.
+  // Mask a contact for the "we sent a code to …" line: an email keeps its
+  // first two characters and its domain, a phone shows the first three and last
+  // two digits — "123 **** 31".
+  function maskContact(value: string): string {
+    const v = value.trim();
+    if (!v) return "";
+    if (v.includes("@")) return v.replace(/(.{1,2}).*(@.+)/, "$1****$2");
+    const digits = v.replace(/\D/g, "");
+    if (digits.length < 5) return v;
+    return `${digits.slice(0, 3)} **** ${digits.slice(-2)}`;
+  }
+
+  const maskedContact = maskContact(
+    challengePhone || (mode === "login" ? loginId : phone),
+  );
 
   function validateLogin() {
     const errs: Record<string, string> = {};
@@ -252,17 +379,84 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
   const strengthColors = ["", "#EF4444", "#EF4444", "#F59E0B", "#16A34A"];
   const strengthTextColors = ["", "#DC2626", "#DC2626", "#B45309", "#15803D"];
 
+  /** Take a challenge to the OTP screen. The code is only ever delivered to the
+   * citizen (by email), so the boxes always start empty. */
+  function openChallenge(
+    challenge: { phone: string; dev_code?: string },
+    realPhone: string,
+    next: AuthStep,
+    purpose?: OtpPurpose,
+  ) {
+    setPendingPhone(realPhone);
+    // Mask the number ourselves from what the citizen typed, so it reads
+    // "123 **** 31" rather than the API's asterisk-run.
+    setChallengePhone(realPhone);
+    setOtp(["", "", "", "", "", ""]);
+    setOtpError("");
+    setFormError("");
+    if (purpose) setOtpPurpose(purpose);
+    setStep(next);
+  }
+
   async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validateLogin();
     if (Object.keys(errs).length) { setLoginErrors(errs); return; }
     setLoginErrors({});
-    // Sending the OTP is a real round-trip; surface it as a loading state
-    // rather than jumping to the next step with no feedback.
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    setStep("otp");
+    setFormError("");
+    setNotice("");
+    try {
+      const session = await loginRequest.run({
+        phone: normalizePhone(loginId),
+        password: loginPass,
+      });
+      await signIn(session);
+      onSuccess();
+    } catch (err) {
+      // A wrong answer must not be reusable, so the captcha is rolled either way.
+      setMath(generateMath());
+      setMathInput("");
+      setFormError((err as Error).message);
+    }
+  }
+
+  /** Sign in with a one-time code instead of a password. */
+  async function handleOtpLogin() {
+    const id = normalizePhone(loginId);
+    if (!id) {
+      setLoginErrors((x) => ({ ...x, loginId: t("errLoginIdRequired") }));
+      setFormError(c("phoneNeeded"));
+      return;
+    }
+    setFormError("");
+    setNotice("");
+    try {
+      const challenge = asChallenge(await otpRequest.run({ phone: id, purpose: "login" }));
+      openChallenge(challenge, id, "otp", "login");
+    } catch (err) {
+      setFormError((err as Error).message);
+    }
+  }
+
+  /** Start the reset flow: the API sends a code, the next screen spends it. */
+  async function handleForgotPassword() {
+    const id = normalizePhone(loginId);
+    if (!id) {
+      setLoginErrors((x) => ({ ...x, loginId: t("errLoginIdRequired") }));
+      setFormError(c("phoneNeeded"));
+      return;
+    }
+    setFormError("");
+    setNotice("");
+    try {
+      const challenge = asChallenge(await forgotRequest.run(id));
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setResetError("");
+      openChallenge(challenge, id, "reset");
+    } catch (err) {
+      setFormError((err as Error).message);
+    }
   }
 
   async function handleRegisterSubmit(e: React.FormEvent) {
@@ -270,10 +464,29 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
     const errs = validateRegister();
     if (Object.keys(errs).length) { setRegErrors(errs); return; }
     setRegErrors({});
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    setStep("otp");
+    setFormError("");
+    setNotice("");
+    const id = normalizePhone(phone);
+    try {
+      const challenge = asChallenge(
+        await registerRequest.run({
+          phone: id,
+          name: fullName.trim(),
+          password,
+          email: email.trim() || undefined,
+        }),
+      );
+      openChallenge(challenge, id, "otp", "register");
+    } catch (err) {
+      // 422 answers name the offending field; show them where the user typed.
+      // The API's field names differ slightly from this form's own keys.
+      if (err instanceof ApiError && err.fields.length) {
+        const map: Record<string, string> = {};
+        for (const f of err.fields) map[f.field === "name" ? "fullName" : f.field] = f.message;
+        setRegErrors((x) => ({ ...x, ...map }));
+      }
+      setFormError((err as Error).message);
+    }
   }
 
   function handleOtpChange(i: number, val: string) {
@@ -294,9 +507,64 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
     if (text.length === 6) { setOtp(text.split("")); otpRefs.current[5]?.focus(); }
   }
 
-  function handleOtpVerify() {
-    if (otp.join("").length < 6) { setOtpError(t("errOtpIncomplete")); return; }
-    onSuccess();
+  async function handleOtpVerify() {
+    const code = otp.join("");
+    if (code.length < 6) { setOtpError(t("errOtpIncomplete")); return; }
+    setOtpError("");
+    try {
+      const session = await otpVerify.run({ phone: pendingPhone, code, purpose: otpPurpose });
+      await signIn(session);
+      onSuccess();
+    } catch (err) {
+      setOtpError((err as Error).message);
+    }
+  }
+
+  /** Ask the API for a fresh code — the reset flow has its own endpoint. The
+   * new code is emailed to the citizen; the boxes stay empty and the resend
+   * countdown restarts. */
+  async function handleResendOtp() {
+    if (countdown > 0 || resending) return; // still cooling down
+    setOtpError("");
+    setOtp(["", "", "", "", "", ""]);
+    setResending(true);
+    try {
+      if (step === "reset") {
+        await forgotRequest.run(pendingPhone);
+      } else {
+        await otpRequest.run({ phone: pendingPhone, purpose: otpPurpose });
+      }
+      setOtpResent(true);
+      setResendNonce((n) => n + 1); // restart the "Resend in …" timer
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (err) {
+      setOtpError((err as Error).message);
+    } finally {
+      setResending(false);
+    }
+  }
+
+  /** Spend the reset code on a new password, then hand the user back to login. */
+  async function handleResetSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const code = otp.join("");
+    if (code.length < 6) { setResetError(t("errOtpIncomplete")); return; }
+    if (newPassword.length < 8) { setResetError(t("errPasswordMin")); return; }
+    if (newPassword !== confirmNewPassword) { setResetError(t("errPasswordMismatch")); return; }
+    setResetError("");
+    try {
+      await resetRequest.run({ phone: pendingPhone, code, new_password: newPassword });
+      setStep("tabs");
+      setMode("login");
+      setLoginId(pendingPhone);
+      setLoginPass("");
+      setOtp(["", "", "", "", "", ""]);
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setNotice(c("resetDone"));
+    } catch (err) {
+      setResetError((err as Error).message);
+    }
   }
 
   /* ─── OTP SCREEN ─── */
@@ -333,6 +601,11 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 </p>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                {otpResent && (
+                  <div className="mb-4">
+                    <ApiNotice tone="success" msg={c("otpResent")} />
+                  </div>
+                )}
                 <div className="flex gap-2 justify-center mb-1" onPaste={handleOtpPaste}>
                   {otp.map((digit, i) => (
                     <input
@@ -358,10 +631,11 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 {otpError && <p className="text-red-500 text-xs text-center mt-2">{otpError}</p>}
                 <button
                   onClick={handleOtpVerify}
-                  className="w-full py-3.5 rounded-xl text-white text-sm font-semibold mt-5 transition-opacity hover:opacity-90"
+                  disabled={otpVerify.pending}
+                  className="w-full py-3.5 rounded-xl text-white text-sm font-semibold mt-5 transition-opacity hover:opacity-90 disabled:opacity-60"
                   style={{ backgroundColor: "#344EAD" }}
                 >
-                  {t("verifyCode")}
+                  {otpVerify.pending ? tc("loading") : t("verifyCode")}
                 </button>
                 <div className="mt-5 text-center">
                   {countdown > 0 ? (
@@ -370,7 +644,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     </p>
                   ) : (
                     <button
-                      onClick={() => { setOtp(["","","","","",""]); setOtpError(""); setOtpResent(x=>!x); setTimeout(()=>otpRefs.current[0]?.focus(),50); }}
+                      onClick={handleResendOtp}
                       className="flex items-center gap-1.5 mx-auto text-sm font-medium"
                       style={{ color: "#344EAD" }}
                     >
@@ -380,6 +654,133 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── RESET PASSWORD ─── */
+  if (step === "reset") {
+    return (
+      <div className="flex h-screen w-full overflow-hidden">
+        <LeftPanel />
+        <div className="w-full lg:w-1/2 flex flex-col bg-[#F0F2F8] overflow-y-auto">
+          <div className="px-6 pt-6 pb-2 flex-shrink-0">
+            <button
+              onClick={() => setStep("tabs")}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">{t("back")}</span>
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-6 py-8">
+            <div className="w-full max-w-sm">
+              <div className="flex lg:hidden justify-center mb-8">
+                <img src={logoLcc} alt="LCC" className="w-20 h-20 object-contain rounded-2xl" />
+              </div>
+              <div className="text-center mb-8">
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: "#EEF2FF" }}
+                >
+                  <Lock className="w-7 h-7" style={{ color: "#344EAD" }} />
+                </div>
+                <h2 className="text-gray-800 mb-2" style={{ fontSize: "22px" }}>{c("resetTitle")}</h2>
+                <p className="text-gray-500 text-sm">
+                  {c("resetSub")}<br />
+                  <span className="font-semibold text-gray-700">{maskedContact}</span>
+                </p>
+              </div>
+              <form
+                onSubmit={handleResetSubmit}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4"
+              >
+                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                  {otp.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      style={{ height: "52px", width: "44px" }}
+                      className={`text-center rounded-xl border-2 text-xl font-bold outline-none transition-all flex-shrink-0 ${
+                        digit
+                          ? "border-[#344EAD] bg-[#EEF2FF] text-[#344EAD]"
+                          : "border-gray-200 bg-gray-50 text-gray-800"
+                      } focus:border-[#344EAD] focus:bg-white focus:ring-2 focus:ring-[#344EAD]/15`}
+                    />
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {c("newPassword")}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type={showNewPass ? "text" : "password"}
+                      placeholder={t("registerPasswordPlaceholder")}
+                      value={newPassword}
+                      onChange={(e) => { setNewPassword(e.target.value); setResetError(""); }}
+                      className={`${inputBase} pl-10 pr-10 ${normalClass}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass((s) => !s)}
+                      aria-label={showNewPass ? t("hidePassword") : t("showPassword")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {c("confirmNewPassword")}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type={showNewPass ? "text" : "password"}
+                      placeholder={t("confirmPasswordPlaceholder")}
+                      value={confirmNewPassword}
+                      onChange={(e) => { setConfirmNewPassword(e.target.value); setResetError(""); }}
+                      className={`${inputBase} pl-10 ${resetError ? errClass : normalClass}`}
+                    />
+                  </div>
+                </div>
+
+                <ApiNotice msg={resetError} />
+
+                <Button type="submit" size="lg" fullWidth loading={resetRequest.pending}>
+                  {c("savePassword")}
+                </Button>
+
+                <div className="text-center">
+                  {countdown > 0 ? (
+                    <p className="text-gray-400 text-sm">{t("resendIn", { seconds: countdown })}</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      className="flex items-center gap-1.5 mx-auto text-sm font-medium"
+                      style={{ color: "#344EAD" }}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {t("resendOtp")}
+                    </button>
+                  )}
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -426,7 +827,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 {(["login", "register"] as AuthMode[]).map((m) => (
                   <button
                     key={m}
-                    onClick={() => { setMode(m); setLoginErrors({}); setRegErrors({}); }}
+                    onClick={() => { setMode(m); setLoginErrors({}); setRegErrors({}); setFormError(""); }}
                     className={`flex-1 py-3.5 text-sm font-semibold transition-colors relative ${
                       mode === m ? "text-[#344EAD]" : "text-gray-400 hover:text-gray-600"
                     }`}
@@ -446,6 +847,9 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 {/* ══ LOGIN ══ */}
                 {mode === "login" && (
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
+                    <ApiNotice msg={notice} tone="success" />
+                    <ApiNotice msg={formError} />
+
                     {/* Phone / Email */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -473,7 +877,12 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-medium text-gray-600">{t("passwordLabel")}</label>
-                        <button type="button" className="text-xs font-medium" style={{ color: "#344EAD" }}>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          className="text-xs font-medium"
+                          style={{ color: "#344EAD" }}
+                        >
                           {t("forgotPassword")}
                         </button>
                       </div>
@@ -558,6 +967,17 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                       <div className="flex-1 h-px bg-gray-100" />
                     </div>
 
+                    {/* One-time code sign-in — no password needed */}
+                    <button
+                      type="button"
+                      onClick={handleOtpLogin}
+                      disabled={otpRequest.pending}
+                      className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 shadow-sm disabled:opacity-60"
+                    >
+                      <MessageSquare className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                      {c("otpSignIn")}
+                    </button>
+
                     {/* Google button */}
                     <button
                       type="button"
@@ -573,7 +993,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         type="button"
                         className="text-xs font-semibold"
                         style={{ color: "#344EAD" }}
-                        onClick={() => { setMode("register"); setLoginErrors({}); }}
+                        onClick={() => { setMode("register"); setLoginErrors({}); setFormError(""); }}
                       >
                         {t("register")}
                       </button>
@@ -584,6 +1004,8 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                 {/* ══ REGISTER ══ */}
                 {mode === "register" && (
                   <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                    <ApiNotice msg={formError} />
+
                     {/* Full Name */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">{t("fullNameLabel")}</label>
@@ -763,7 +1185,7 @@ export function AuthPage({ onSuccess, onBack }: AuthPageProps) {
                         type="button"
                         className="text-xs font-semibold"
                         style={{ color: "#344EAD" }}
-                        onClick={() => { setMode("login"); setRegErrors({}); }}
+                        onClick={() => { setMode("login"); setRegErrors({}); setFormError(""); }}
                       >
                         {t("signIn")}
                       </button>

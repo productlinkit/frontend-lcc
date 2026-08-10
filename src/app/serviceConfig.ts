@@ -1,10 +1,14 @@
 /*
  * Per-service configuration — fee, processing time and required documents.
- * Keyed by the service `id` in SERVICES (ServicePage.tsx).
+ * Keyed by the service `code` the API uses ("resident", "birth", …), which is
+ * also the `id` other pages already pass around.
  *
- * Fees are DEMO ESTIMATES for the prototype (except Residence Certificate, which
- * comes from the PRD §5.1). Real amounts follow the MoHA/MoPS fee schedule and
- * must be reconfirmed at configuration time (PRD §11.3 master data, §13 #4).
+ * The numbers below are no longer the source of truth: they are the *initial*
+ * state so a card never flashes an empty fee, and the fallback when the backend
+ * cannot be reached. The real table is /services, fetched once and cached in
+ * this module (see `loadServiceCatalogue`). Anything reading SERVICE_CONFIG or
+ * getServiceConfig transparently gets the fetched values once they land; a
+ * component that wants to re-render when they do should use `useServiceConfig`.
  *
  * processingTime / requiredDocs are bilingual ({ en, lo }); read the current
  * language with `cfg.processingTime[lang]` and `cfg.requiredDocs.map(d => d[lang])`.
@@ -12,6 +16,10 @@
  * fee: number  → amount in LAK (0 = free)
  * fee: null    → not configured / to be confirmed
  */
+import { useEffect, useMemo, useState } from "react";
+
+import { catalog } from "./api/endpoints";
+import type { Service } from "./api/types";
 import type { Lang } from "./i18n";
 
 export interface Bilingual {
@@ -44,6 +52,10 @@ export function formatFee(cfg: ServiceConfig, lang: Lang = "en"): string {
   return formatLak(cfg.fee, lang);
 }
 
+/*
+ * Seed values. Mutated in place by loadServiceCatalogue() so the exported
+ * object identity — which several pages captured at import time — stays valid.
+ */
 export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   resident: {
     fee: 20000, // PRD §5.1
@@ -109,7 +121,8 @@ export const SERVICE_CONFIG: Record<string, ServiceConfig> = {
 
 /*
  * Marriage fee schedule (LAK) — official MoHA rate card. The marriage total is
- * conditional, so it isn't a single number in SERVICE_CONFIG:
+ * conditional on the couple, which /services does not break down (it only
+ * publishes the 100,000–250,000 range), so this stays a local constant.
  *   • Betrothal (Proposal) Record ............ 100,000  (only when creating one)
  *   • Registration, Lao national + Lao national 100,000
  *   • Registration, Lao national + foreigner .. 150,000  (resident/alien or from abroad)
@@ -127,10 +140,8 @@ export const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
 };
 
 /*
- * Dummy fee schedule (LAK, 0 = free) for services without a full config above.
- * Demo estimates only. Free: social aid, health, education, most bill/tax
- * payments (you pay the amount, not a service fee). Paid: issuance, permits,
- * licenses & documents.
+ * Fee-only fallback (LAK, 0 = free) for services the catalogue has not been
+ * read for yet. Overwritten from /services on the first load.
  */
 export const SERVICE_FEE: Record<string, number> = {
   // Civil & Population
@@ -185,4 +196,109 @@ export function getServiceConfig(id: string): ServiceConfig {
   if (SERVICE_CONFIG[id]) return SERVICE_CONFIG[id];
   const fee = id in SERVICE_FEE ? SERVICE_FEE[id] : null;
   return { ...DEFAULT_SERVICE_CONFIG, fee };
+}
+
+/* ── The cached catalogue ──────────────────────────────────────────────── */
+
+function toConfig(s: Service): ServiceConfig {
+  const isRange = s.fee_is_range && s.fee_max_lak > s.fee_lak;
+  const time = s.processing_time;
+  return {
+    fee: typeof s.fee_lak === "number" ? s.fee_lak : null,
+    feeMax: isRange ? s.fee_max_lak : undefined,
+    processingTime:
+      time && (time.en || time.lo)
+        ? { en: time.en || time.lo, lo: time.lo || time.en }
+        : DEFAULT_SERVICE_CONFIG.processingTime,
+    requiredDocs: (s.required_docs ?? []).map((d) => ({ en: d.en || d.lo, lo: d.lo || d.en })),
+  };
+}
+
+let catalogueLoaded = false;
+let cataloguePromise: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+/** True once /services has been read at least once in this tab. */
+export function isServiceCatalogueLoaded(): boolean {
+  return catalogueLoaded;
+}
+
+/**
+ * Read /services once per tab and fold it into SERVICE_CONFIG / SERVICE_FEE.
+ * Concurrent callers share the same request; a failure is swallowed (the seed
+ * values stay on screen) and the next call retries.
+ */
+export function loadServiceCatalogue(): Promise<void> {
+  if (catalogueLoaded) return Promise.resolve();
+  if (cataloguePromise) return cataloguePromise;
+
+  cataloguePromise = catalog
+    .services()
+    .then((rows) => {
+      for (const row of rows ?? []) {
+        if (!row?.code) continue;
+        SERVICE_CONFIG[row.code] = toConfig(row);
+        if (typeof row.fee_lak === "number") SERVICE_FEE[row.code] = row.fee_lak;
+      }
+      catalogueLoaded = true;
+    })
+    .catch(() => {
+      // Offline or the API is down — the seeded table above is the fallback.
+    })
+    .finally(() => {
+      cataloguePromise = null;
+      listeners.forEach((fn) => fn());
+    });
+
+  return cataloguePromise;
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/**
+ * The configuration for one service, kept in step with the fetched catalogue.
+ *
+ *   const { config, loading } = useServiceConfig("resident");
+ *
+ * `config` is never undefined: until the catalogue lands it is the seeded value
+ * (or the default), so a fee never renders as a blank.
+ */
+export function useServiceConfig(code: string): { config: ServiceConfig; loading: boolean } {
+  const [version, setVersion] = useState(0);
+  const [loading, setLoading] = useState(!catalogueLoaded);
+
+  useEffect(() => {
+    if (catalogueLoaded) {
+      setLoading(false);
+      return;
+    }
+
+    let alive = true;
+    setLoading(true);
+
+    const unsubscribe = subscribe(() => {
+      if (!alive) return;
+      setVersion((n) => n + 1);
+      setLoading(false);
+    });
+
+    void loadServiceCatalogue();
+
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, []);
+
+  return useMemo(
+    () => ({ config: getServiceConfig(code), loading }),
+    // `version` is the cache-changed signal, not a value we read directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [code, loading, version],
+  );
 }

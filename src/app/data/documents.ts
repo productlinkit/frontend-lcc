@@ -1,9 +1,21 @@
 /*
- * Dummy document specs for the prototype. The Residence Certificate uses a real
- * PDF asset (kept as-is); every other document is generated on demand from these
- * specs (see lib/document.ts). Content is illustrative English placeholder data.
+ * Document specs for the printable PDF generator (lib/document.ts).
+ *
+ * The mappers at the bottom turn what the API actually sends — a
+ * /me/documents/{id} payload, an issued certificate, an issued case — into a
+ * DocSpec. ACCOUNT_DOC_SPECS / serviceDocSpec above them are the older
+ * placeholder specs, still imported by AccountPage.
  */
 import type { DocSpec } from "../lib/document";
+import type {
+  ApplicationDetail,
+  Bilingual,
+  Certificate,
+  DocumentDetail,
+  Lang,
+  PlaceNames,
+} from "../api/types";
+import { text } from "../api/types";
 
 const HOLDER = "Somchai Phommasack";
 
@@ -102,4 +114,157 @@ export function serviceDocSpec(serviceKey: string, refNo: string): DocSpec {
         verifyCode: code,
       };
   }
+}
+
+/* ── Live payloads → printable spec ────────────────────────────────────── */
+
+type DocField = { label: string; value: string };
+
+/**
+ * What /me/documents/{id} really sends. `DocumentDetail` covers the common
+ * fields; the registry block below rides along with it and is what the printed
+ * card is filled from when the API does not send an explicit `fields` list.
+ */
+export type DocumentPayload = DocumentDetail & {
+  holder?: {
+    name?: Bilingual | string;
+    uin?: string;
+    national_id_no?: string;
+    gender?: string;
+    date_of_birth?: string;
+    place_of_birth?: string;
+    nationality?: string;
+    ethnicity?: string;
+    religion?: string;
+    household_no?: string;
+    address?: string;
+  };
+  place?: PlaceNames;
+};
+
+const L = (lang: Lang, en: string, lo: string) => (lang === "lo" ? lo : en);
+
+/** "2026-08-08" or an RFC3339 stamp → "08 Aug 2026". */
+function day(value: string | undefined, lang: Lang): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(lang === "lo" ? "lo-LA" : "en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function titleCase(slug: string): string {
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function holderName(doc: DocumentPayload, lang: Lang): string {
+  if (doc.holder_name) return doc.holder_name;
+  const name = doc.holder?.name;
+  if (typeof name === "string") return name;
+  return text(name, lang) || "—";
+}
+
+/** A document held by the citizen, ready to print. */
+export function docSpecFromDocument(doc: DocumentPayload, lang: Lang): DocSpec {
+  const explicit: DocField[] = (doc.fields ?? []).map((f) => ({
+    label: text(f.label, lang),
+    value: f.value,
+  }));
+
+  const derived: DocField[] = [];
+  const h = doc.holder;
+  const push = (label: string, value?: string) => {
+    if (value) derived.push({ label, value });
+  };
+  push(L(lang, "Document no.", "ເລກເອກະສານ"), doc.number);
+  push(L(lang, "UIN", "ລະຫັດປະຈຳຕົວ"), h?.uin);
+  push(L(lang, "Date of birth", "ວັນເດືອນປີເກີດ"), h?.date_of_birth ? day(h.date_of_birth, lang) : undefined);
+  push(L(lang, "Sex", "ເພດ"), h?.gender ? titleCase(h.gender) : undefined);
+  push(L(lang, "Nationality", "ສັນຊາດ"), h?.nationality);
+  push(L(lang, "Place of birth", "ສະຖານທີ່ເກີດ"), h?.place_of_birth);
+  push(L(lang, "Province", "ແຂວງ"), text(doc.place?.province, lang) || undefined);
+  push(L(lang, "District", "ເມືອງ"), text(doc.place?.district, lang) || undefined);
+  push(L(lang, "Village", "ບ້ານ"), text(doc.place?.village, lang) || undefined);
+  push(L(lang, "Household no.", "ເລກສຳມະໂນຄົວ"), h?.household_no);
+
+  return {
+    title: text(doc.title, lang) || titleCase(doc.type),
+    kicker: titleCase(doc.type),
+    refNo: doc.number || "—",
+    holderName: holderName(doc, lang),
+    office: doc.authority || "Lao Citizen Center",
+    fields: explicit.length > 0 ? explicit : derived,
+    issued: day(doc.issued_at, lang),
+    validUntil: doc.expires_at ? day(doc.expires_at, lang) : undefined,
+    verifyCode: doc.verify_code || doc.number || "—",
+    hasPhoto: doc.type.includes("id") || doc.type.includes("passport"),
+  };
+}
+
+/** An issued certificate, ready to print. */
+export function docSpecFromCertificate(cert: Certificate, lang: Lang): DocSpec {
+  const fields: DocField[] = [];
+  const push = (label: string, value?: string) => {
+    if (value) fields.push({ label, value });
+  };
+  push(L(lang, "Certificate no.", "ເລກໃບຢັ້ງຢືນ"), cert.certificate_no);
+  push(L(lang, "Reference", "ເລກອ້າງອີງ"), cert.reference_no);
+  push(L(lang, "UIN", "ລະຫັດປະຈຳຕົວ"), cert.uin);
+  push(L(lang, "Status", "ສະຖານະ"), cert.status ? titleCase(cert.status) : undefined);
+  push(L(lang, "Issued by", "ອອກໂດຍ"), cert.issued_by_name);
+  push(L(lang, "Verify code", "ລະຫັດກວດສອບ"), cert.verify_code);
+
+  return {
+    title: text(cert.service_name, lang) || L(lang, "Official Certificate", "ໃບຢັ້ງຢືນທາງການ"),
+    kicker: L(lang, "Civil Registration", "ທະບຽນພົນລະເມືອງ"),
+    refNo: cert.certificate_no || cert.reference_no || "—",
+    holderName: cert.holder_name || "—",
+    office: cert.issued_by_name || "Lao Citizen Center",
+    fields,
+    issued: day(cert.issued_at, lang),
+    verifyCode: cert.verify_code || cert.certificate_no || "—",
+  };
+}
+
+/**
+ * An issued case, for when the certificate record itself is not readable —
+ * the case still carries the certificate number, the holder and the office.
+ */
+export function docSpecFromApplication(
+  app: ApplicationDetail,
+  cert: Certificate | undefined,
+  lang: Lang,
+): DocSpec {
+  if (cert) return docSpecFromCertificate(cert, lang);
+
+  const fields: DocField[] = [];
+  const push = (label: string, value?: string) => {
+    if (value) fields.push({ label, value });
+  };
+  push(L(lang, "Reference", "ເລກອ້າງອີງ"), app.reference_no);
+  push(L(lang, "Certificate no.", "ເລກໃບຢັ້ງຢືນ"), app.certificate_no);
+  push(L(lang, "Status", "ສະຖານະ"), text(app.status_label, lang));
+  push(L(lang, "Province", "ແຂວງ"), app.jurisdiction?.province_name);
+  push(L(lang, "District", "ເມືອງ"), app.jurisdiction?.district_name);
+  push(L(lang, "Village", "ບ້ານ"), app.jurisdiction?.village_name);
+
+  return {
+    title: text(app.service_name, lang),
+    kicker: L(lang, "Civil Registration", "ທະບຽນພົນລະເມືອງ"),
+    refNo: app.certificate_no || app.reference_no,
+    holderName: app.subject_name || app.applicant || "—",
+    office: app.jurisdiction?.district_name
+      ? `${app.jurisdiction.district_name} · ${app.jurisdiction.province_name ?? ""}`.trim()
+      : "Lao Citizen Center",
+    fields,
+    issued: day(app.issued_at ?? app.updated_at, lang),
+    verifyCode: app.certificate_no || app.reference_no,
+  };
 }

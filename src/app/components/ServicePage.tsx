@@ -1,7 +1,10 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState, type ElementType } from "react";
 import { useT, useLang } from "../i18n";
 import { GlassIcon } from "./GlassIcon";
 import { ServiceCard } from "./ServiceCard";
+import { catalog } from "../api/endpoints";
+import { useDebounced, useQuery } from "../api/hooks";
+import { text, type Service, type ServiceCategory } from "../api/types";
 import {
   Search,
   Users,
@@ -60,6 +63,8 @@ import {
   Baby as BabyIcon,
   MessageCircle,
   MapPin,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 interface ServicePageProps {
@@ -86,8 +91,56 @@ export interface ServiceItem {
   icon: React.ElementType;
   category: string;
   tab?: string; // route to navigate to
+  /** Accent colour from the catalogue; falls back to the category colour. */
+  color?: string;
 }
 
+/*
+ * The catalogue sends an icon NAME ("Home", "Baby", "Users2"); this is the
+ * lookup that turns it back into the lucide component. Anything unrecognised
+ * falls back to a neutral document glyph rather than rendering nothing.
+ */
+const ICONS: Record<string, ElementType> = {
+  Users, Plane, Wallet, HeartPulse, Bus, Building2, GraduationCap, HandHeart,
+  Home, UserCircle, Shield, FileText, ClipboardList, Baby, BookOpen, IdCard,
+  Users2, Tag, StickyNote, Globe2, Landmark, Receipt, Zap, AlertOctagon, Coins,
+  HeartHandshake, Heart, HeartCrack, UserMinus, CalendarCheck, Syringe,
+  Stethoscope, Car, CarFront, Route, Store, BadgeCheck, Building, ScrollText,
+  MapPinned, Hammer, Map, Gavel, Siren, School, Award, Tractor, PiggyBank,
+  HandCoins, Accessibility, MessageCircle, MapPin, Search, ChevronRight,
+};
+
+export function serviceIcon(name?: string): ElementType {
+  return (name && ICONS[name]) || FileText;
+}
+
+/** "/service/resident-certificate" → "resident-certificate" (the App tab id). */
+function routeToTab(routePath?: string): string | undefined {
+  if (!routePath) return undefined;
+  const last = routePath.split("/").filter(Boolean).pop();
+  return last || undefined;
+}
+
+function toServiceItem(s: Service): ServiceItem {
+  return {
+    id: s.code,
+    name: text(s.name, "en"),
+    nameLo: text(s.name, "lo"),
+    desc: text(s.description, "en"),
+    descLo: text(s.description, "lo"),
+    icon: serviceIcon(s.icon),
+    category: s.category_code,
+    tab: routeToTab(s.route_path),
+    color: s.color || undefined,
+  };
+}
+
+/*
+ * The static tables below are no longer what this page renders — the catalogue
+ * comes from /service-categories and /services. They stay exported because the
+ * home page still reads them, and they double as the blurb + tint source for a
+ * category (the API publishes a name, icon and colour but no description).
+ */
 export const CATEGORIES: Category[] = [
   { id: "civil", label: "Civil & Population", labelLo: "ພົນລະເມືອງ ແລະ ການທະບຽນ", desc: "ID, certificates & registration", descLo: "ບັດປະຈຳຕົວ, ໃບຢັ້ງຢືນ ແລະ ການຂຶ້ນທະບຽນ", icon: Users, color: "#344EAD", bg: "#EEF2FF" },
   { id: "immigration", label: "Immigration", labelLo: "ກວດຄົນເຂົ້າ-ອອກເມືອງ", desc: "Passport, visa & travel", descLo: "ໜັງສືຜ່ານແດນ, ວີຊາ ແລະ ການເດີນທາງ", icon: Plane, color: "#0EA5E9", bg: "#E0F2FE" },
@@ -169,31 +222,137 @@ export const SERVICES: ServiceItem[] = [
   { id: "village", name: "Village Services", nameLo: "ບໍລິການບ້ານ", desc: "Local village requests", descLo: "ການຮ້ອງຂໍຂັ້ນບ້ານ", icon: MapPin, category: "civil" },
 ];
 
+/* Wording the `service` dictionary does not carry; kept bilingual inline. */
+const COPY = {
+  categoriesError: { en: "Could not load the categories.", lo: "ບໍ່ສາມາດໂຫຼດໝວດໝູ່ໄດ້." },
+  servicesError: { en: "Could not load the services.", lo: "ບໍ່ສາມາດໂຫຼດບໍລິການໄດ້." },
+  errorHint: {
+    en: "Check your connection and try again.",
+    lo: "ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ ແລະ ລອງໃໝ່ອີກຄັ້ງ.",
+  },
+  retry: { en: "Retry", lo: "ລອງໃໝ່" },
+  noCategories: { en: "No categories are published yet.", lo: "ຍັງບໍ່ມີໝວດໝູ່ທີ່ເຜີຍແຜ່ເທື່ອ." },
+} as const;
+
+function SkeletonGrid({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 animate-pulse"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-gray-200 mb-4" />
+          <div className="h-4 rounded bg-gray-200 w-3/4" />
+          <div className="h-3 rounded bg-gray-100 w-1/2 mt-2" />
+          <div className="h-3 rounded bg-gray-100 w-1/3 mt-4" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorPanel({
+  message,
+  hint,
+  retryLabel,
+  onRetry,
+}: {
+  message: string;
+  hint: string;
+  retryLabel: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
+      <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-3">
+        <AlertCircle className="w-6 h-6" style={{ color: "#DC2626" }} />
+      </div>
+      <p className="text-gray-700 text-sm font-medium">{message}</p>
+      <p className="text-gray-400 text-xs mt-1">{hint}</p>
+      <button
+        onClick={onRetry}
+        className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-full"
+        style={{ color: "#344EAD", backgroundColor: "#EEF2FF" }}
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        {retryLabel}
+      </button>
+    </div>
+  );
+}
+
 export function ServicePage({ onTabChange }: ServicePageProps) {
   const t = useT("service");
   const { lang } = useLang();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredServices = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      return SERVICES.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.desc.toLowerCase().includes(q) ||
-          s.nameLo.toLowerCase().includes(q) ||
-          s.descLo.toLowerCase().includes(q)
-      );
-    }
-    if (activeCategory) {
-      return SERVICES.filter((s) => s.category === activeCategory);
-    }
-    return [];
-  }, [searchQuery, activeCategory]);
+  const query = searchQuery.trim();
+  const debouncedQuery = useDebounced(query, 300);
+  const typing = query !== debouncedQuery;
 
-  const showCategoryView = !activeCategory && searchQuery.trim() === "";
-  const currentCategory = CATEGORIES.find((c) => c.id === activeCategory);
+  const showCategoryView = !activeCategory && query === "";
+
+  /* The chips, and the whole catalogue behind the per-category counts. */
+  const categoriesQuery = useQuery<ServiceCategory[]>((signal) => catalog.categories(signal), []);
+  const allServicesQuery = useQuery<Service[]>((signal) => catalog.services(undefined, signal), []);
+
+  /* The cards — search and category are handed to the API, not filtered here. */
+  const listQuery = useQuery<Service[]>(
+    (signal) =>
+      catalog.services(
+        { search: debouncedQuery || undefined, category: activeCategory ?? undefined },
+        signal,
+      ),
+    [debouncedQuery, activeCategory],
+    { enabled: !showCategoryView },
+  );
+
+  const categories = useMemo<Category[]>(() => {
+    const rows = categoriesQuery.data;
+    if (!rows) return [];
+    return rows.map((c) => {
+      // The API publishes a name, icon and colour; the blurb and tint stay local.
+      const seed = CATEGORIES.find((x) => x.id === c.code);
+      return {
+        id: c.code,
+        label: text(c.name, "en"),
+        labelLo: text(c.name, "lo"),
+        desc: seed?.desc ?? "",
+        descLo: seed?.descLo ?? "",
+        icon: serviceIcon(c.icon) as React.ElementType,
+        color: c.color || seed?.color || "#344EAD",
+        bg: seed?.bg ?? "#F3F4F6",
+      };
+    });
+  }, [categoriesQuery.data]);
+
+  const counts = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const s of allServicesQuery.data ?? []) {
+      totals[s.category_code] = (totals[s.category_code] ?? 0) + 1;
+    }
+    return totals;
+  }, [allServicesQuery.data]);
+
+  const services = useMemo<ServiceItem[]>(
+    () => (listQuery.data ?? []).map(toServiceItem),
+    [listQuery.data],
+  );
+
+  const currentCategory =
+    categories.find((c) => c.id === activeCategory) ??
+    CATEGORIES.find((c) => c.id === activeCategory);
+
+  // `typing` covers the debounce window and `refreshing` the re-query after a
+  // filter change, so the grid never shows rows from the previous search.
+  const listLoading = listQuery.loading || listQuery.refreshing || typing;
+
+  const retryCatalogue = () => {
+    categoriesQuery.refetch();
+    allServicesQuery.refetch();
+  };
 
   return (
     <div className="min-h-full">
@@ -259,53 +418,85 @@ export function ServicePage({ onTabChange }: ServicePageProps) {
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
               {t("categories")}
             </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                const count = SERVICES.filter((s) => s.category === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className="group bg-white rounded-2xl p-5 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <GlassIcon icon={Icon} color={cat.color} size={56} />
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
-                    </div>
-                    <p className="text-base font-semibold text-gray-800 leading-snug">
-                      {lang === "lo" ? cat.labelLo : cat.label}
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1 leading-snug">
-                      {lang === "lo" ? cat.descLo : cat.desc}
-                    </p>
-                    <p
-                      className="text-sm mt-4 font-medium"
-                      style={{ color: count > 0 ? "#344EAD" : "#9CA3AF" }}
+
+            {categoriesQuery.loading || allServicesQuery.loading ? (
+              <SkeletonGrid count={8} />
+            ) : categoriesQuery.error || allServicesQuery.error ? (
+              <ErrorPanel
+                message={
+                  categoriesQuery.error ? COPY.categoriesError[lang] : COPY.servicesError[lang]
+                }
+                hint={COPY.errorHint[lang]}
+                retryLabel={COPY.retry[lang]}
+                onRetry={retryCatalogue}
+              />
+            ) : categories.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <Search className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-gray-700 text-sm font-medium">
+                  {COPY.noCategories[lang]}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {categories.map((cat) => {
+                  const Icon = cat.icon;
+                  const count = counts[cat.id] ?? 0;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className="group bg-white rounded-2xl p-5 text-left shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
                     >
-                      {count > 0
-                        ? t("serviceCount", { count })
-                        : t("comingSoon")}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+                      <div className="flex items-start justify-between mb-4">
+                        <GlassIcon icon={Icon} color={cat.color} size={56} />
+                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                      </div>
+                      <p className="text-base font-semibold text-gray-800 leading-snug">
+                        {lang === "lo" ? cat.labelLo : cat.label}
+                      </p>
+                      <p className="text-sm text-gray-400 mt-1 leading-snug">
+                        {lang === "lo" ? cat.descLo : cat.desc}
+                      </p>
+                      <p
+                        className="text-sm mt-4 font-medium"
+                        style={{ color: count > 0 ? "#344EAD" : "#9CA3AF" }}
+                      >
+                        {count > 0
+                          ? t("serviceCount", { count })
+                          : t("comingSoon")}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>
         ) : (
           <>
-            {searchQuery && (
+            {searchQuery && !listLoading && !listQuery.error && (
               <p className="text-xs text-gray-500 mb-3">
                 {t("resultsFor", {
-                  count: filteredServices.length,
+                  count: services.length,
                   q: searchQuery,
                 })}
               </p>
             )}
 
-            {filteredServices.length > 0 ? (
+            {listLoading ? (
+              <SkeletonGrid count={8} />
+            ) : listQuery.error ? (
+              <ErrorPanel
+                message={COPY.servicesError[lang]}
+                hint={COPY.errorHint[lang]}
+                retryLabel={COPY.retry[lang]}
+                onRetry={listQuery.refetch}
+              />
+            ) : services.length > 0 ? (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {filteredServices.map((s) => (
+                {services.map((s) => (
                   <ServiceCard
                     key={s.id}
                     service={s}

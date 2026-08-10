@@ -35,23 +35,30 @@ export function tabHref(tab: string): string {
   return `#${TAB_TO_PATH[tab] ?? "/"}`;
 }
 
+// A news detail segment is either a numeric position (legacy links) or an
+// article slug, so it matches any non-empty segment that is not itself a known
+// sub-route. The API identifies an article by slug, so slug links are primary.
+const NEWS_DETAIL = /^\/news\/([^/]+)$/;
+
 /** Current tab derived from window.location.hash. Unknown paths fall back home. */
 export function tabFromHash(): string {
   const raw = window.location.hash.replace(/^#/, "") || "/";
-  // Parameterised route: #/news/<id> renders the detail page.
-  if (/^\/news\/\d+$/.test(raw)) return "news-detail";
+  if (raw !== "/news" && NEWS_DETAIL.test(raw)) return "news-detail";
   return PATH_TO_TAB[raw] ?? "home";
 }
 
-/** href for a specific news article's detail page. */
+/** href for a specific news article's detail page (by slug or numeric id). */
 export function newsHref(id: number | string): string {
   return `#/news/${id}`;
 }
 
-/** Article id when on a #/news/<id> route, else null. */
-export function newsIdFromHash(): number | null {
-  const m = window.location.hash.match(/^#\/news\/(\d+)$/);
-  return m ? Number(m[1]) : null;
+/**
+ * The news detail segment from the hash, or null. Returns the raw string so a
+ * slug is preserved; NewsDetailPage accepts either a slug or a numeric position.
+ */
+export function newsIdFromHash(): string | null {
+  const m = window.location.hash.match(new RegExp(`^#${NEWS_DETAIL.source}`));
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
 /** Navigate by writing the hash; the app's hashchange listener applies it. */

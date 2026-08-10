@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { GlassIcon } from "./GlassIcon";
 import { CATEGORIES, type ServiceItem } from "./ServicePage";
-import { getServiceConfig, formatFee } from "../serviceConfig";
+import { useServiceConfig, formatFee } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
+
+/** Fallback accent when neither the service nor its category names a colour. */
+const DEFAULT_ACCENT = "#344EAD";
 
 /** Shared service tile — used on the home menu and the Service page list. */
 export function ServiceCard({
@@ -16,9 +19,17 @@ export function ServiceCard({
   const { lang } = useLang();
   const [hover, setHover] = useState(false);
 
-  const cat = CATEGORIES.find((c) => c.id === service.category)!;
+  // The catalogue gives each service its own colour; older callers pass only a
+  // category, so fall back to the category tint and then to the brand blue.
+  const accent =
+    service.color ??
+    CATEGORIES.find((c) => c.id === service.category)?.color ??
+    DEFAULT_ACCENT;
+
   const Icon = service.icon;
-  const cfg = getServiceConfig(service.id);
+  // Fees come from /services, cached in serviceConfig; until it lands this is
+  // the seeded value, so the row never renders blank.
+  const { config: cfg, loading: feeLoading } = useServiceConfig(service.id);
   const isFree = cfg.fee === 0 && cfg.feeMax == null;
 
   return (
@@ -33,7 +44,7 @@ export function ServiceCard({
       }}
     >
       <div className="mb-4">
-        <GlassIcon icon={Icon} color={cat.color} size={56} />
+        <GlassIcon icon={Icon} color={accent} size={56} />
       </div>
       <p
         className="text-lg font-semibold leading-snug transition-colors duration-200"
@@ -54,7 +65,10 @@ export function ServiceCard({
       >
         <span
           className="text-sm font-semibold whitespace-nowrap"
-          style={{ color: hover ? "white" : isFree ? "#15803D" : "#344EAD" }}
+          style={{
+            color: hover ? "white" : isFree ? "#15803D" : "#344EAD",
+            opacity: feeLoading ? 0.55 : 1,
+          }}
         >
           {formatFee(cfg, lang)}
         </span>

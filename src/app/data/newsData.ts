@@ -1,6 +1,10 @@
 /*
- * Single source of truth for News & Announcements — used by the home slider,
- * the /news list, and the /news/:id detail page.
+ * News & Announcements — legacy sample copy plus the route bridge.
+ *
+ * The list and detail pages now read from the API (GET /news, /news/:slug); the
+ * NEWS_ITEMS array below is no longer their data source and is kept only
+ * because other screens still import the array, the category palette and
+ * `newsImage`. New code should use `content.news(...)` from api/endpoints.
  *
  * Taxonomy (4 mutually-exclusive categories, all AA-contrast on their tint):
  *   announcement — official notices: policy, law, scheduled maintenance
@@ -11,6 +15,9 @@
  * Article text lives here (bilingual) rather than in the i18n dictionary so a
  * writer can add an item in one place; UI chrome strings stay in the `news` ns.
  */
+
+import { content } from "../api/endpoints";
+import type { NewsArticle } from "../api/types";
 
 export type NewsCategory = "announcement" | "service" | "security" | "event";
 
@@ -203,4 +210,35 @@ export const NEWS_ITEMS: NewsItem[] = [
 
 export function getNewsItem(id: number): NewsItem | undefined {
   return NEWS_ITEMS.find((n) => n.id === id);
+}
+
+/* ── Route bridge: the numeric #/news/<n> URL ↔ the API's slug ─────────────
+ *
+ * The hash route only matches digits (see routes.ts), while the API identifies
+ * an article by slug. Both the list and the detail page therefore agree on one
+ * canonical ordering — the unfiltered, default-sorted first page of /news — and
+ * treat an article's 1-based position in it as its route id. The detail page
+ * turns that position back into a slug and then fetches the article itself, so
+ * the view counter still moves. A slug in the URL is honoured directly, should
+ * the route ever be widened to accept one.
+ */
+
+/** One page big enough to hold the whole published catalogue. */
+export const NEWS_ROUTE_PAGE_SIZE = 100;
+
+/** The canonical ordering the numeric route ids are positions in. */
+export async function newsCatalogue(signal?: AbortSignal): Promise<NewsArticle[]> {
+  const page = await content.news({ per_page: NEWS_ROUTE_PAGE_SIZE }, signal);
+  return page.data;
+}
+
+/** 1-based route id for an article, or its slug when it is not in the catalogue. */
+export function newsRouteId(catalogue: NewsArticle[] | undefined, slug: string): string | number {
+  const index = catalogue?.findIndex((a) => a.slug === slug) ?? -1;
+  return index >= 0 ? index + 1 : slug;
+}
+
+/** Slug behind a numeric route id, or undefined when the position is out of range. */
+export function newsSlugAt(catalogue: NewsArticle[] | undefined, routeId: number): string | undefined {
+  return catalogue?.[routeId - 1]?.slug;
 }

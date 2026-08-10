@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   ChevronLeft,
   ArrowRight,
@@ -7,47 +7,62 @@ import {
   AlertCircle,
   Users2,
   Crown,
-  Plus,
-  Trash2,
   Hash,
-  Camera,
-  X,
+  RotateCcw,
+  BookX,
 } from "lucide-react";
-import { LocationFields, DateField } from "./formFields";
-import {
-  ValidationProvider,
-  useShowErrors,
-  FieldError,
-  fieldErrorRing,
-  isEmpty,
-  scrollToFirstError,
-} from "./formValidation";
 import { useT, useLang } from "../i18n";
 import { formatLak } from "../serviceConfig";
+import { me } from "../api/endpoints";
+import { useQuery, useMutation } from "../api/hooks";
+import { useSession } from "../api/session";
+import type { ApplicationRow, FamilyBook, HouseholdMember } from "../api/types";
+import { text } from "../api/types";
 
 /*
  * Family Book (Household Registration) — follows the PRD §10.
- * Fields: Cover & Household Head (§10.2) and Household Members table (§10.3).
- * The Family Book is normally auto-maintained by DoPS from the other services;
- * this form captures / updates the household record.
- * M = Mandatory · C = Conditional · O = Optional · Auto = system-generated.
+ * The Family Book is auto-maintained by DoPS from the other civil registration
+ * services, so the citizen portal READS it rather than capturing it:
+ *   GET  /me/family-book              → cover (§10.2) + members table (§10.3)
+ *   POST /me/family-book/request-copy → raises a "copy" application
+ * Cover & head details come from the household record; the member rows carry
+ * name, relation, gender, date of birth, UIN and status straight from DoPS.
  */
 
-/* ─── Types ─── */
-interface UploadedFile {
-  name: string;
-  preview: string | null;
-}
+/* The wire carries a couple of cover fields the shared type does not name. */
+type FamilyBookRecord = FamilyBook & {
+  head_id_no?: string;
+  nationality?: string;
+};
 
-interface Member {
-  photo: UploadedFile | null; // O — member 3×4 photo
-  name: string; // M — Name and Surname
-  gender: string; // M
-  dob: string; // M
-  relationship: string; // M — relationship to household head
-  ethnicity: string; // O
-  nationality: string; // M
-}
+/* Short bilingual sentences for the three data states. The i18n namespaces are
+ * owned elsewhere, so these live here rather than as new dictionary keys. */
+const COPY = {
+  loading: { en: "Loading your family book…", lo: "ກຳລັງໂຫຼດປຶ້ມສຳມະໂນຄົວຂອງທ່ານ..." },
+  errorTitle: { en: "We could not load your family book.", lo: "ບໍ່ສາມາດໂຫຼດປຶ້ມສຳມະໂນຄົວໄດ້." },
+  retry: { en: "Try again", lo: "ລອງໃໝ່" },
+  signedOut: {
+    en: "Sign in to see the household you belong to.",
+    lo: "ກະລຸນາເຂົ້າສູ່ລະບົບເພື່ອເບິ່ງຄົວເຮືອນຂອງທ່ານ.",
+  },
+  emptyTitle: { en: "No household on file", lo: "ຍັງບໍ່ມີຄົວເຮືອນໃນລະບົບ" },
+  emptyBody: {
+    en: "Your name is not linked to a family book yet. Your village office can add you to one.",
+    lo: "ຊື່ຂອງທ່ານຍັງບໍ່ໄດ້ຜູກເຂົ້າກັບປຶ້ມສຳມະໂນຄົວ. ຫ້ອງການບ້ານຂອງທ່ານສາມາດເພີ່ມທ່ານເຂົ້າໄດ້.",
+  },
+  noMembers: {
+    en: "No members are recorded in this household yet.",
+    lo: "ຍັງບໍ່ມີສະມາຊິກຖືກບັນທຶກໃນຄົວເຮືອນນີ້.",
+  },
+  copyReason: {
+    en: "Copy requested from the citizen portal",
+    lo: "ຮ້ອງຂໍສຳເນົາຜ່ານແອັບຂອງພົນລະເມືອງ",
+  },
+  status: { en: "Status", lo: "ສະຖານະ" },
+  uin: { en: "UIN", lo: "ລະຫັດປະຈຳຕົວ" },
+} as const;
+
+type Copy = keyof typeof COPY;
 
 /* ─── Constants ─── */
 /* Step ids are stable; labels/subtitles are translated at render time. */
@@ -57,145 +72,43 @@ const STEPS = [
   { id: 3, labelKey: "step3Label", subKey: "step3Subtitle" },
 ] as const;
 
-/* `value` is the stable identifier used in logic; `key` maps to the translated label. */
-const GENDERS = [
-  { value: "Female", key: "genderFemale" },
-  { value: "Male", key: "genderMale" },
-] as const;
-const NATIONALITIES = [
-  { value: "Lao", key: "natLao" },
-  { value: "Thai", key: "natThai" },
-  { value: "Vietnamese", key: "natVietnamese" },
-  { value: "Chinese", key: "natChinese" },
-  { value: "Cambodian", key: "natCambodian" },
-  { value: "Other", key: "natOther" },
-] as const;
-const ETHNICITIES = [
-  { value: "Lao", key: "ethLao" },
-  { value: "Khmu", key: "ethKhmu" },
-  { value: "Hmong", key: "ethHmong" },
-  { value: "Phouthai", key: "ethPhouthai" },
-  { value: "Tai", key: "ethTai" },
-  { value: "Other", key: "ethOther" },
-] as const;
-const RELATIONSHIPS = [
-  { value: "Household Head", key: "relHead" },
-  { value: "Spouse", key: "relSpouse" },
-  { value: "Child", key: "relChild" },
-  { value: "Parent", key: "relParent" },
-  { value: "Sibling", key: "relSibling" },
-  { value: "Grandparent", key: "relGrandparent" },
-  { value: "Grandchild", key: "relGrandchild" },
-  { value: "Other", key: "relOther" },
-] as const;
-
-const blankMember: Member = {
-  photo: null, name: "", gender: "", dob: "", relationship: "", ethnicity: "", nationality: "Lao",
+/* Relation / gender arrive as free-form registry values; these map the common
+ * ones onto the existing translated labels and fall back to the raw value. */
+const RELATION_KEY: Record<string, string> = {
+  head: "relHead", "head of household": "relHead", "household head": "relHead",
+  spouse: "relSpouse", wife: "relSpouse", husband: "relSpouse",
+  child: "relChild", son: "relChild", daughter: "relChild",
+  parent: "relParent", father: "relParent", mother: "relParent",
+  sibling: "relSibling", brother: "relSibling", sister: "relSibling",
+  grandparent: "relGrandparent", grandchild: "relGrandchild",
+  relative: "relOther", other: "relOther",
+};
+const GENDER_KEY: Record<string, string> = {
+  male: "genderMale", m: "genderMale",
+  female: "genderFemale", f: "genderFemale",
 };
 
-/* Compact optional 3×4 photo picker for a household member. */
-function MemberPhoto({
-  value, onChange, label,
-}: {
-  value: UploadedFile | null; onChange: (f: UploadedFile | null) => void; label: string;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = e.target.files?.[0];
-    if (!picked) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => onChange({ name: picked.name, preview: ev.target?.result as string | null });
-    reader.readAsDataURL(picked);
-  };
-  return (
-    <div className="flex items-center gap-3">
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-      {value?.preview ? (
-        <div className="relative">
-          <img src={value.preview} alt="" className="w-16 h-20 object-cover rounded-xl border border-gray-200" />
-          <button
-            type="button"
-            onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ""; }}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 shadow-sm"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-16 h-20 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 hover:border-[#344EAD]/40 hover:bg-blue-50/50 transition-all"
-        >
-          <Camera className="w-5 h-5" />
-        </button>
-      )}
-      <p className="text-xs text-gray-400 leading-relaxed">{label}</p>
-    </div>
-  );
-}
+const isHeadRelation = (relation: string) =>
+  RELATION_KEY[relation.trim().toLowerCase()] === "relHead";
 
 /* ─── Field components ─── */
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
 }
 
-function InputField({
-  label, value, placeholder, onChange, required, inputMode,
-}: {
-  label: React.ReactNode; value: string; placeholder: string;
-  onChange: (v: string) => void; required?: boolean;
-  inputMode?: "text" | "numeric";
-}) {
-  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
+/* A registry value the citizen reads but cannot edit — same box as the inputs
+ * it replaces, so the cover keeps its familiar shape. */
+function ReadField({ label, value }: { label: React.ReactNode; value: string }) {
   return (
     <div>
-      <FieldLabel required={required}>{label}</FieldLabel>
-      <input
-        type="text"
-        inputMode={inputMode}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
-      />
-      <FieldError show={hasError} />
-    </div>
-  );
-}
-
-function SelectField({
-  label, value, options, placeholder, onChange, required,
-}: {
-  label: React.ReactNode; value: string;
-  options: { value: string; label: string }[];
-  placeholder: string; onChange: (v: string) => void; required?: boolean;
-}) {
-  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
-  return (
-    <div>
-      <FieldLabel required={required}>{label}</FieldLabel>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
-        >
-          <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-800">
+        {value || "—"}
       </div>
-      <FieldError show={hasError} />
     </div>
   );
 }
@@ -267,89 +180,158 @@ interface FamilyBookPageProps {
 
 export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
   const t = useT("familyBook");
+  const tf = useT("fields");
   const { lang } = useLang();
+  const { isAuthenticated } = useSession();
   const [step, setStep] = useState(1);
-  const [showErrors, setShowErrors] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState<ApplicationRow | null>(null);
 
-  // Auto values (PRD §10.2)
-  const familyBookNo = "VTE-CHA-0098-2412";
+  const say = (key: Copy) => COPY[key][lang] ?? COPY[key].en;
 
-  const [head, setHead] = useState({
-    holderName: "", // Holder's Name (Book Cover)
-    holderFullName: "", // Holder's Name and Surname
-    idCardNo: "",
-    placeOfBirth: "",
-    unit: "",
-    group: "",
-    village: "",
-    district: "",
-    province: "",
+  const {
+    data: book,
+    loading,
+    error,
+    refetch,
+  } = useQuery<FamilyBookRecord>((signal) => me.familyBook(signal), [], {
+    enabled: isAuthenticated,
   });
-  const [members, setMembers] = useState<Member[]>([blankMember]);
 
-  const patchHead = (patch: Partial<typeof head>) => setHead((p) => ({ ...p, ...patch }));
+  const requestCopy = useMutation((reason: string) => me.requestFamilyBookCopy({ reason }));
 
-  const patchMember = (index: number, patch: Partial<Member>) =>
-    setMembers((list) => list.map((m, i) => (i === index ? { ...m, ...patch } : m)));
-  const addMember = () => setMembers((list) => [...list, blankMember]);
-  const removeMember = (index: number) =>
-    setMembers((list) => (list.length > 1 ? list.filter((_, i) => i !== index) : list));
-
-  // Counts (PRD §10.2 — derived from the members table)
-  const total = members.length;
-  const men = members.filter((m) => m.gender === "Male").length;
-  const women = members.filter((m) => m.gender === "Female").length;
-
-  // Translate a stable option value to its display label (for read-only review rows).
-  const labelOf = (
-    list: readonly { value: string; key: string }[],
-    value: string,
-  ) => {
-    const found = list.find((o) => o.value === value);
-    return found ? t(found.key as Parameters<typeof t>[0]) : value;
+  /* Translate a registry value to its label, falling back to the raw string. */
+  const labelOf = (map: Record<string, string>, value: string) => {
+    const key = map[(value ?? "").trim().toLowerCase()];
+    return key ? t(key as Parameters<typeof t>[0]) : value || "—";
   };
 
-  const memberValid = (m: Member) =>
-    Boolean(m.name.trim() && m.gender && m.dob.trim() && m.relationship && m.nationality);
+  const members: HouseholdMember[] = book?.members ?? [];
+  const total = book?.total_members ?? members.length;
+  const men = book?.male_members ?? members.filter((m) => m.gender?.toLowerCase().startsWith("m")).length;
+  const women = book?.female_members ?? members.filter((m) => m.gender?.toLowerCase().startsWith("f")).length;
 
-  /* ── Validation — only Mandatory fields block progression ── */
-  const canProceed = () => {
-    if (step === 1)
-      return Boolean(
-        head.holderName.trim() && head.holderFullName.trim() && head.idCardNo.trim() &&
-        head.placeOfBirth.trim() && head.unit.trim() && head.group.trim() &&
-        head.village.trim() && head.district.trim() && head.province
-      );
-    if (step === 2) return members.length > 0 && members.every(memberValid);
-    return true;
-  };
+  const place = book?.jurisdiction;
+  const addressLine =
+    [place?.village_name, place?.district_name, place?.province_name].filter(Boolean).join(", ") ||
+    book?.address ||
+    "—";
 
   const lastStep = STEPS.length;
 
   const goBack = () => {
-    setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
-  const handleNext = () => {
-    // Button stays enabled; tapping an incomplete step reveals inline errors.
-    if (!canProceed()) {
-      setShowErrors(true);
-      scrollToFirstError();
+  const handleNext = async () => {
+    if (step < lastStep) {
+      setStep((s) => s + 1);
       return;
     }
-    setShowErrors(false);
-    if (step < lastStep) setStep((s) => s + 1);
-    else {
-      setSubmitting(true);
-      setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 2200);
+    try {
+      const created = await requestCopy.run(say("copyReason"));
+      setSubmitted(created);
+    } catch {
+      // The failure is rendered from requestCopy.error on the review step.
     }
   };
 
-  /* ── Success ── */
+  /* ── Page frame — shared by every state so the chrome never flickers ── */
+  const frame = (body: React.ReactNode, cta?: React.ReactNode) => (
+    <div className="min-h-full flex flex-col bg-[#F0F2F8]">
+      <div className="flex-shrink-0 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 min-w-0 text-center">
+            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
+            <p className="text-xs text-gray-400">{t("subtitle")}</p>
+          </div>
+          <div className="w-9 flex-shrink-0" />
+        </div>
+      </div>
+
+      {book && <StepIndicator step={step} />}
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-screen-sm mx-auto px-4 py-6 space-y-5 pb-28">{body}</div>
+      </div>
+
+      {cta && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-4 pt-3 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-40">
+          <div className="max-w-screen-sm mx-auto">{cta}</div>
+        </div>
+      )}
+    </div>
+  );
+
+  /* ── Loading ── */
+  if (loading) {
+    return frame(
+      <>
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> {say("loading")}
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
+            <div className="h-3 w-24 rounded-full bg-gray-100 animate-pulse" />
+            <div className="h-3 w-full rounded-full bg-gray-100 animate-pulse" />
+            <div className="h-3 w-2/3 rounded-full bg-gray-100 animate-pulse" />
+          </div>
+        ))}
+      </>,
+    );
+  }
+
+  /* ── Signed out ── */
+  if (!isAuthenticated) {
+    return frame(
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-3">
+        <BookX className="w-8 h-8 text-gray-300" />
+        <p className="text-sm text-gray-500 leading-relaxed">{say("signedOut")}</p>
+      </div>,
+    );
+  }
+
+  /* ── Error (a 404 means "no household", which is an empty state, not a fault) ── */
+  if (error && !error.isNotFound) {
+    return frame(
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-4">
+        <AlertCircle className="w-8 h-8 text-amber-500" />
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{say("errorTitle")}</p>
+          <p className="text-xs text-gray-400 mt-1 leading-relaxed">{error.message}</p>
+        </div>
+        <button
+          onClick={refetch}
+          className="flex items-center gap-2 px-5 py-3 rounded-2xl text-white text-sm font-semibold shadow-md hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: "#344EAD" }}
+        >
+          <RotateCcw className="w-4 h-4" />
+          {say("retry")}
+        </button>
+      </div>,
+    );
+  }
+
+  /* ── Empty — the citizen is not on a household yet ── */
+  if (!book) {
+    return frame(
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-3">
+        <BookX className="w-8 h-8 text-gray-300" />
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{say("emptyTitle")}</p>
+          <p className="text-xs text-gray-400 mt-1 leading-relaxed">{say("emptyBody")}</p>
+        </div>
+      </div>,
+    );
+  }
+
+  /* ── Success — the copy request was raised ── */
   if (submitted) {
     return (
       <div className="min-h-full flex flex-col items-center justify-center p-6">
@@ -368,10 +350,14 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: t("successHead"), value: head.holderFullName || head.holderName || "—" },
-              { label: t("familyBookNo"), value: familyBookNo },
+              { label: t("successHead"), value: book.head_name || "—" },
+              { label: t("familyBookNo"), value: submitted.reference_no || book.household_no },
               { label: t("successMembers"), value: t("peopleSummary", { total, men, women }) },
-              { label: t("statusLabel"), value: t("statusSubmitted"), isStatus: true },
+              {
+                label: t("statusLabel"),
+                value: text(submitted.status_label, lang) || t("statusSubmitted"),
+                isStatus: true,
+              },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>
@@ -398,312 +384,206 @@ export function FamilyBookPage({ onBack }: FamilyBookPageProps) {
     );
   }
 
-  return (
-    <ValidationProvider showErrors={showErrors}>
-    <div className="min-h-full flex flex-col bg-[#F0F2F8]">
+  /* ── The household ── */
+  return frame(
+    <>
+      <StepHeader step={step} />
 
-      {/* ── Sub-header ── */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-screen-sm mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={goBack}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-semibold text-gray-800">{t("title")}</p>
-            <p className="text-xs text-gray-400">{t("subtitle")}</p>
+      {/* Step 1 — Cover & household head */}
+      {step === 1 && (
+        <>
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
+            <div>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("familyBookNo")}</p>
+              <p className="text-sm font-semibold text-gray-800 mt-0.5">{book.household_no || "—"}</p>
+            </div>
+            <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+              {t("autoGenerated")}
+            </span>
           </div>
-          <div className="w-9 flex-shrink-0" />
-        </div>
-      </div>
 
-      {/* ── Step indicator ── */}
-      <StepIndicator step={step} />
+          <ReadField label={t("holderNameLabel")} value={book.head_name} />
 
-      {/* ── Form body ── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-screen-sm mx-auto px-4 py-6 space-y-5 pb-28">
+          <SectionLabel>{t("householdHead")}</SectionLabel>
+          <ReadField label={t("nameAndSurname")} value={book.head_name} />
+          <ReadField label={t("idCardNo")} value={book.head_id_no ?? ""} />
+          <div className="grid grid-cols-2 gap-3">
+            <ReadField label={t("unit")} value={book.unit} />
+            <ReadField label={t("group")} value={book.group} />
+          </div>
 
-          <StepHeader step={step} />
+          <SectionLabel>{t("address")}</SectionLabel>
+          <ReadField label={tf("province")} value={place?.province_name ?? ""} />
+          <div className="grid grid-cols-2 gap-3">
+            <ReadField label={tf("district")} value={place?.district_name ?? ""} />
+            <ReadField label={tf("village")} value={place?.village_name ?? ""} />
+          </div>
 
-          {/* Step 1 — Household & Head */}
-          {step === 1 && (
-            <>
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("familyBookNo")}</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{familyBookNo}</p>
-                </div>
-                <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                  {t("autoGenerated")}
-                </span>
-              </div>
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-100">
+            <p className="text-xs font-medium" style={{ color: "#344EAD" }}>
+              {t("dateOfIssue")}
+            </p>
+            <span className="text-[10px] font-medium px-2 py-1 rounded-full" style={{ backgroundColor: "white", color: "#344EAD" }}>
+              {book.issued_at || book.registered_at || t("setOnIssuance")}
+            </span>
+          </div>
+        </>
+      )}
 
-              <InputField
-                label={t("holderNameLabel")}
-                value={head.holderName}
-                placeholder={t("holderNamePlaceholder")}
-                onChange={(v) => patchHead({ holderName: v })}
-                required
-              />
+      {/* Step 2 — Members */}
+      {step === 2 && (
+        <>
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
+            <div className="flex items-center gap-2">
+              <Users2 className="w-4 h-4" style={{ color: "#344EAD" }} />
+              <p className="text-sm font-medium text-gray-700">
+                {total} {total === 1 ? t("person") : t("people")}
+              </p>
+            </div>
+            <p className="text-xs text-gray-400">{t("menCount", { n: men })} · {t("womenCount", { n: women })}</p>
+          </div>
 
-              <SectionLabel>{t("householdHead")}</SectionLabel>
-              <InputField
-                label={t("nameAndSurname")}
-                value={head.holderFullName}
-                placeholder={t("holderFullNamePlaceholder")}
-                onChange={(v) => patchHead({ holderFullName: v })}
-                required
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <InputField
-                  label={t("idCardNo")}
-                  value={head.idCardNo}
-                  placeholder={t("idCardNoPlaceholder")}
-                  onChange={(v) => patchHead({ idCardNo: v })}
-                  required
-                />
-                <InputField
-                  label={t("placeOfBirth")}
-                  value={head.placeOfBirth}
-                  placeholder={t("placeOfBirthPlaceholder")}
-                  onChange={(v) => patchHead({ placeOfBirth: v })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <InputField
-                  label={t("unit")}
-                  value={head.unit}
-                  placeholder={t("unitPlaceholder")}
-                  onChange={(v) => patchHead({ unit: v })}
-                  required
-                />
-                <InputField
-                  label={t("group")}
-                  value={head.group}
-                  placeholder={t("groupPlaceholder")}
-                  onChange={(v) => patchHead({ group: v })}
-                  required
-                />
-              </div>
-
-              <SectionLabel>{t("address")}</SectionLabel>
-              <LocationFields
-                province={head.province}
-                district={head.district}
-                village={head.village}
-                required
-                onChange={(p) => patchHead(p)}
-              />
-
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-100">
-                <p className="text-xs font-medium" style={{ color: "#344EAD" }}>
-                  {t("dateOfIssue")}
-                </p>
-                <span className="text-[10px] font-medium px-2 py-1 rounded-full" style={{ backgroundColor: "white", color: "#344EAD" }}>
-                  {t("setOnIssuance")}
-                </span>
-              </div>
-            </>
-          )}
-
-          {/* Step 2 — Members */}
-          {step === 2 && (
-            <>
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
-                <div className="flex items-center gap-2">
-                  <Users2 className="w-4 h-4" style={{ color: "#344EAD" }} />
-                  <p className="text-sm font-medium text-gray-700">
-                    {total} {total === 1 ? t("person") : t("people")}
-                  </p>
-                </div>
-                <p className="text-xs text-gray-400">{t("menCount", { n: men })} · {t("womenCount", { n: women })}</p>
-              </div>
-
-              {members.map((m, i) => {
-                const isHead = m.relationship === "Household Head";
-                return (
-                  <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {isHead ? (
-                          <Crown className="w-4 h-4" style={{ color: "#344EAD" }} />
-                        ) : (
-                          <span className="text-xs font-semibold text-gray-400">#{i + 1}</span>
-                        )}
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          {t("memberN", { n: i + 1 })}
-                        </p>
-                      </div>
-                      {members.length > 1 && (
-                        <button
-                          onClick={() => removeMember(i)}
-                          className="text-gray-300 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+          {members.length === 0 ? (
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
+              <p className="text-sm text-gray-500 leading-relaxed">{say("noMembers")}</p>
+            </div>
+          ) : (
+            members.map((m, i) => {
+              const isHead = isHeadRelation(m.relation ?? "");
+              return (
+                <div key={m.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {isHead ? (
+                        <Crown className="w-4 h-4" style={{ color: "#344EAD" }} />
+                      ) : (
+                        <span className="text-xs font-semibold text-gray-400">#{i + 1}</span>
                       )}
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {t("memberN", { n: i + 1 })}
+                      </p>
                     </div>
-
-                    <MemberPhoto
-                      value={m.photo}
-                      onChange={(f) => patchMember(i, { photo: f })}
-                      label={t("memberPhotoHint")}
-                    />
-                    <InputField
-                      label={t("nameAndSurname")}
-                      value={m.name}
-                      placeholder={t("memberFullNamePlaceholder")}
-                      onChange={(v) => patchMember(i, { name: v })}
-                      required
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <SelectField
-                        label={t("gender")}
-                        value={m.gender}
-                        options={GENDERS.map((o) => ({ value: o.value, label: t(o.key) }))}
-                        placeholder={t("selectPlaceholder")}
-                        onChange={(v) => patchMember(i, { gender: v })}
-                        required
-                      />
-                      <DateField
-                        label={t("dateOfBirth")}
-                        value={m.dob}
-                        onChange={(v) => patchMember(i, { dob: v })}
-                        required
-                      />
-                    </div>
-                    <SelectField
-                      label={t("relationshipToHead")}
-                      value={m.relationship}
-                      options={RELATIONSHIPS.map((o) => ({ value: o.value, label: t(o.key) }))}
-                      placeholder={t("selectPlaceholder")}
-                      onChange={(v) => patchMember(i, { relationship: v })}
-                      required
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <SelectField
-                        label={t("nationality")}
-                        value={m.nationality}
-                        options={NATIONALITIES.map((o) => ({ value: o.value, label: t(o.key) }))}
-                        placeholder={t("selectPlaceholder")}
-                        onChange={(v) => patchMember(i, { nationality: v })}
-                        required
-                      />
-                      <SelectField
-                        label={t("ethnicityOptional")}
-                        value={m.ethnicity}
-                        options={ETHNICITIES.map((o) => ({ value: o.value, label: t(o.key) }))}
-                        placeholder={t("selectPlaceholder")}
-                        onChange={(v) => patchMember(i, { ethnicity: v })}
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400 pt-0.5">
-                      <Hash className="w-3 h-3 flex-shrink-0" />
-                      {t("uinNote")}
-                    </div>
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                      {m.status || "—"}
+                    </span>
                   </div>
-                );
-              })}
 
-              <button
-                onClick={addMember}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm font-semibold transition-all hover:border-[#344EAD]/40 hover:bg-blue-50/50"
-                style={{ color: "#344EAD" }}
-              >
-                <Plus className="w-4 h-4" />
-                {t("addMember")}
-              </button>
-            </>
+                  {m.photo_url && (
+                    <img
+                      src={m.photo_url}
+                      alt=""
+                      className="w-16 h-20 object-cover rounded-xl border border-gray-200"
+                    />
+                  )}
+                  <ReadField label={t("nameAndSurname")} value={m.name} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <ReadField label={t("gender")} value={labelOf(GENDER_KEY, m.gender ?? "")} />
+                    <ReadField label={t("dateOfBirth")} value={m.date_of_birth ?? ""} />
+                  </div>
+                  <ReadField label={t("relationshipToHead")} value={labelOf(RELATION_KEY, m.relation ?? "")} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <ReadField label={t("nationality")} value={m.nationality ?? ""} />
+                    <ReadField label={say("status")} value={m.status ?? ""} />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 pt-0.5">
+                    <Hash className="w-3 h-3 flex-shrink-0" />
+                    {say("uin")}: {m.uin || "—"}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+
+      {/* Step 3 — Review & request a copy */}
+      {step === 3 && (
+        <>
+          <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+            <p className="text-xs text-amber-700 leading-relaxed">
+              {t("reviewNotice")}
+            </p>
+          </div>
+
+          {requestCopy.error && (
+            <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-red-50 border border-red-100">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
+              <p className="text-xs text-red-600 leading-relaxed">{requestCopy.error.message}</p>
+            </div>
           )}
 
-          {/* Step 3 — Review */}
-          {step === 3 && (
-            <>
-              <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  {t("reviewNotice")}
-                </p>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2.5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("household")}</p>
+            {[
+              [t("familyBookNo"), book.household_no || "—"],
+              [t("holder"), book.head_name || "—"],
+              [t("idCardNo"), book.head_id_no || "—"],
+              [t("unitGroup"), `${book.unit || "—"} / ${book.group || "—"}`],
+              [t("address"), addressLine],
+              [t("dateOfIssue"), book.issued_at || book.registered_at || "—"],
+              [t("peopleLabel"), t("peopleSummary", { total, men, women })],
+              [t("fee"), formatLak(0, lang)],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-start justify-between gap-3">
+                <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
+                <span className="text-sm font-medium text-gray-800 text-right">{value}</span>
               </div>
+            ))}
+          </div>
 
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2.5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("household")}</p>
-                {[
-                  [t("familyBookNo"), familyBookNo],
-                  [t("holder"), head.holderFullName || head.holderName || "—"],
-                  [t("idCardNo"), head.idCardNo || "—"],
-                  [t("unitGroup"), `${head.unit || "—"} / ${head.group || "—"}`],
-                  [t("address"), [head.village, head.district, head.province].filter(Boolean).join(", ") || "—"],
-                  [t("peopleLabel"), t("peopleSummary", { total, men, women })],
-                  [t("fee"), formatLak(0, lang)],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-start justify-between gap-3">
-                    <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-                    <span className="text-sm font-medium text-gray-800 text-right">{value}</span>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t("members")}</p>
+            {members.length === 0 ? (
+              <p className="text-sm text-gray-500 py-2">{say("noMembers")}</p>
+            ) : (
+              <div className="space-y-2">
+                {members.map((m, i) => (
+                  <div key={m.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{m.name || t("memberN", { n: i + 1 })}</p>
+                      <p className="text-xs text-gray-400">{[
+                        m.relation && labelOf(RELATION_KEY, m.relation),
+                        m.gender && labelOf(GENDER_KEY, m.gender),
+                        m.date_of_birth,
+                        m.uin,
+                      ].filter(Boolean).join(" · ") || "—"}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{m.status || "—"}</span>
                   </div>
                 ))}
               </div>
-
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t("members")}</p>
-                <div className="space-y-2">
-                  {members.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{m.name || t("memberN", { n: i + 1 })}</p>
-                        <p className="text-xs text-gray-400">{[
-                          m.relationship && labelOf(RELATIONSHIPS, m.relationship),
-                          m.gender && labelOf(GENDERS, m.gender),
-                          m.dob,
-                        ].filter(Boolean).join(" · ") || "—"}</p>
-                      </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{m.nationality ? labelOf(NATIONALITIES, m.nationality) : "—"}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Fixed bottom CTA ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-4 pt-3 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-40">
-        <div className="max-w-screen-sm mx-auto">
-          <button
-            onClick={handleNext}
-            disabled={submitting}
-            className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
-            style={{
-              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
-              cursor: submitting ? "not-allowed" : "pointer",
-            }}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {t("submitting")}
-              </>
-            ) : step === lastStep ? (
-              <>
-                {t("submitRecord")}
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                {t("continue")}
-                <ArrowRight className="w-4 h-4" />
-              </>
             )}
-          </button>
-        </div>
-      </div>
-    </div>
-    </ValidationProvider>
+          </div>
+        </>
+      )}
+    </>,
+    <button
+      onClick={handleNext}
+      disabled={requestCopy.pending}
+      className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
+      style={{
+        backgroundColor: requestCopy.pending ? "#C7D2FE" : "#344EAD",
+        cursor: requestCopy.pending ? "not-allowed" : "pointer",
+      }}
+    >
+      {requestCopy.pending ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {t("submitting")}
+        </>
+      ) : step === lastStep ? (
+        <>
+          {t("submitRecord")}
+          <ArrowRight className="w-4 h-4" />
+        </>
+      ) : (
+        <>
+          {t("continue")}
+          <ArrowRight className="w-4 h-4" />
+        </>
+      )}
+    </button>,
   );
 }

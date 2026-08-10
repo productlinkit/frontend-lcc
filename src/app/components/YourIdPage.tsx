@@ -9,11 +9,50 @@ import {
   Calendar,
   Hash,
   User,
+  AlertCircle,
 } from "lucide-react";
-import { useT } from "../i18n";
+import { useT, useLang } from "../i18n";
+import { me } from "../api/endpoints";
+import { useQuery } from "../api/hooks";
+import { useSession } from "../api/session";
+import { text, type Lang } from "../api/types";
 
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1600896997793-b8ed3459a17f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzb3V0aGVhc3QlMjBhc2lhbiUyMHByb2Zlc3Npb25hbCUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc3NjY3MDIyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
+/* Labels this screen needs that the shared dictionary does not carry — the
+ * dictionary's issuer/issue-date strings have the demo values baked into them,
+ * and the card now shows what the registry actually holds. */
+const COPY = {
+  issuedBy: { en: "Issued by", lo: "ອອກໂດຍ" },
+  issueDate: { en: "Issue date", lo: "ວັນທີອອກບັດ" },
+  cardNo: { en: "Card no.", lo: "ເລກບັດ" },
+  placeOfBirth: { en: "Place of Birth", lo: "ສະຖານທີ່ເກີດ" },
+  address: { en: "Address", lo: "ທີ່ຢູ່" },
+  male: { en: "Male", lo: "ຊາຍ" },
+  female: { en: "Female", lo: "ຍິງ" },
+  loadError: {
+    en: "We could not load your digital ID.",
+    lo: "ພວກເຮົາບໍ່ສາມາດໂຫຼດບັດປະຈຳຕົວດິຈິຕອລຂອງທ່ານໄດ້.",
+  },
+  retry: { en: "Try again", lo: "ລອງໃໝ່" },
+  empty: {
+    en: "No digital ID has been issued for your account yet.",
+    lo: "ຍັງບໍ່ມີບັດປະຈຳຕົວດິຈິຕອລອອກໃຫ້ບັນຊີຂອງທ່ານເທື່ອ.",
+  },
+} as const;
+
+/** "1987-07-19" → "19 Jul 1987", in the reader's language. */
+function formatDate(value: string | undefined, lang: Lang): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(lang === "lo" ? "lo-LA" : "en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function QRCodePlaceholder() {
   return (
@@ -58,32 +97,96 @@ function QRCodePlaceholder() {
 export function YourIdPage() {
   const [isFlipped, setIsFlipped] = useState(false);
   const t = useT("yourId");
+  const { lang } = useLang();
+  const { profile } = useSession();
+  const c = (key: keyof typeof COPY) => (COPY[key] as Record<Lang, string>)[lang as Lang];
+
+  const { data: card, loading, error, refetch } = useQuery((signal) => me.digitalID(signal), []);
+
+  // The registry record already sits in the session, so ethnicity, religion and
+  // the place names cost nothing extra here.
+  const registry = profile?.registry;
+  const place = profile?.place;
+
+  const header = (
+    <div
+      className="relative px-4 pt-6 pb-6 lg:px-8"
+      style={{
+        background: "linear-gradient(135deg, #1A2D6B 0%, #344EAD 100%)",
+      }}
+    >
+      <div
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+      <div className="relative z-10">
+        <p className="text-white/70 text-sm mb-1">{t("headerEyebrow")}</p>
+        <h1 className="text-2xl text-white">{t("headerTitle")}</h1>
+        <p className="text-white/60 text-xs mt-1">
+          {t("country")}
+        </p>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-full">
+        {header}
+        <div className="px-4 lg:px-8 py-6 max-w-2xl mx-auto lg:mx-0 space-y-5">
+          <div className="rounded-3xl bg-gray-200 animate-pulse" style={{ minHeight: "220px" }} />
+          <div className="grid grid-cols-3 gap-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-24 rounded-2xl bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+          <div className="h-80 rounded-2xl bg-gray-100 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !card) {
+    return (
+      <div className="min-h-full">
+        {header}
+        <div className="px-4 lg:px-8 py-6 max-w-2xl mx-auto lg:mx-0">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-6 h-6 text-red-500" />
+            </div>
+            <p className="text-gray-700 text-sm">{error ? error.message || c("loadError") : c("empty")}</p>
+            {error && (
+              <button
+                onClick={refetch}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#344EAD" }}
+              >
+                <RefreshCw className="w-4 h-4" />
+                {c("retry")}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = text(card.name, lang) || "—";
+  const gender =
+    card.gender === "male" ? c("male") : card.gender === "female" ? c("female") : card.gender || "—";
+  const provinceName = text(place?.province, lang);
+  // Whatever the card carries for the verifier: an explicit payload, the public
+  // verification code, or — failing both — the UIN the card is filed under.
+  const qrPayload = card.qr_payload || card.verify_url || card.verify_code || card.uin;
 
   return (
     <div className="min-h-full">
-      {/* Header */}
-      <div
-        className="relative px-4 pt-6 pb-6 lg:px-8"
-        style={{
-          background: "linear-gradient(135deg, #1A2D6B 0%, #344EAD 100%)",
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div className="relative z-10">
-          <p className="text-white/70 text-sm mb-1">{t("headerEyebrow")}</p>
-          <h1 className="text-2xl text-white">{t("headerTitle")}</h1>
-          <p className="text-white/60 text-xs mt-1">
-            {t("country")}
-          </p>
-        </div>
-      </div>
+      {header}
 
       <div className="px-4 lg:px-8 py-6 max-w-2xl mx-auto lg:mx-0 space-y-5">
         {/* ID Card */}
@@ -117,17 +220,19 @@ export function YourIdPage() {
                 <div className="flex-shrink-0">
                   <div className="w-20 h-24 rounded-2xl overflow-hidden border-2 border-white/30 shadow-lg">
                     <img
-                      src={PROFILE_PHOTO}
+                      src={card.photo_url || PROFILE_PHOTO}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="mt-2 flex justify-center">
-                    <div className="flex items-center gap-1 bg-green-500/20 border border-green-400/30 rounded-full px-2 py-0.5">
-                      <CheckCircle className="w-3 h-3 text-green-400" />
-                      <span className="text-green-300 text-xs">{t("verified")}</span>
+                  {card.status === "valid" && (
+                    <div className="mt-2 flex justify-center">
+                      <div className="flex items-center gap-1 bg-green-500/20 border border-green-400/30 rounded-full px-2 py-0.5">
+                        <CheckCircle className="w-3 h-3 text-green-400" />
+                        <span className="text-green-300 text-xs">{t("verified")}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Info */}
@@ -146,31 +251,28 @@ export function YourIdPage() {
                     <Shield className="w-6 h-6 text-white/40" />
                   </div>
 
-                  <h2 className="text-white mb-3">
-                    Somchai{" "}
-                    <span style={{ color: "#F59E0B" }}>Phommasack</span>
-                  </h2>
+                  <h2 className="text-white mb-3">{fullName}</h2>
 
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <Hash className="w-3 h-3 text-white/40" />
                       <span className="text-white/60 text-xs">{t("idNumber")}</span>
                       <span className="text-white text-xs font-mono">
-                        LA-2580-1234-5678
+                        {card.uin}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3 h-3 text-white/40" />
                       <span className="text-white/60 text-xs">{t("dob")}</span>
                       <span className="text-white text-xs">
-                        15 March 1985
+                        {formatDate(card.date_of_birth, lang)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-3 h-3 text-white/40" />
                       <span className="text-white/60 text-xs">{t("province")}</span>
                       <span className="text-white text-xs">
-                        Vientiane Capital
+                        {provinceName || card.place_of_birth || "—"}
                       </span>
                     </div>
                   </div>
@@ -179,7 +281,7 @@ export function YourIdPage() {
                     <div>
                       <p className="text-white/40 text-xs">{t("validUntil")}</p>
                       <p className="text-white/80 text-xs font-medium">
-                        31 Dec 2031
+                        {formatDate(card.expires_at, lang)}
                       </p>
                     </div>
                     <p className="text-white/30 text-xs">{t("tapToFlip")}</p>
@@ -213,9 +315,9 @@ export function YourIdPage() {
                     {t("digitalVerificationQR")}
                   </p>
                   <div className="text-white/50 text-xs space-y-1">
-                    <p>{t("issuedBy")}</p>
-                    <p>{t("issueDate")}</p>
-                    <p>{t("chip")}</p>
+                    <p>{c("issuedBy")}: {card.issued_by || "—"}</p>
+                    <p>{c("issueDate")}: {formatDate(card.issued_at, lang)}</p>
+                    <p>{c("cardNo")}: {card.card_no || "—"}</p>
                   </div>
                 </div>
                 <div className="w-28 h-28 bg-white rounded-2xl p-2 shadow-xl flex-shrink-0">
@@ -225,8 +327,8 @@ export function YourIdPage() {
 
               <div className="relative z-10 mt-4">
                 <div className="h-8 bg-black/20 rounded-lg flex items-center px-3">
-                  <p className="text-white/30 text-xs font-mono tracking-widest">
-                    LA2580123456781985
+                  <p className="text-white/30 text-xs font-mono tracking-widest truncate">
+                    {qrPayload}
                   </p>
                 </div>
               </div>
@@ -269,24 +371,26 @@ export function YourIdPage() {
           </div>
 
           {[
-            { label: t("fullName"), value: "Somchai Phommasack" },
-            { label: t("gender"), value: t("genderValue") },
-            { label: t("dateOfBirth"), value: "15 March 1985" },
-            { label: t("nationality"), value: t("nationalityValue") },
-            { label: t("ethnicity"), value: t("ethnicityValue") },
-            { label: t("religion"), value: t("religionValue") },
-            { label: t("provinceLabel"), value: t("provinceValue") },
-            { label: t("district"), value: t("districtValue") },
-            { label: t("village"), value: t("villageValue") },
+            { label: t("fullName"), value: fullName },
+            { label: t("gender"), value: gender },
+            { label: t("dateOfBirth"), value: formatDate(card.date_of_birth, lang) },
+            { label: t("nationality"), value: card.nationality || "—" },
+            { label: c("placeOfBirth"), value: card.place_of_birth || "—" },
+            { label: c("address"), value: card.address || "—" },
+            { label: t("ethnicity"), value: registry?.ethnicity || "—" },
+            { label: t("religion"), value: registry?.religion || "—" },
+            { label: t("provinceLabel"), value: text(place?.province, lang) || "—" },
+            { label: t("district"), value: text(place?.district, lang) || "—" },
+            { label: t("village"), value: text(place?.village, lang) || "—" },
           ].map((item, i, arr) => (
             <div
               key={item.label}
-              className={`flex items-center justify-between px-5 py-3.5 ${
+              className={`flex items-center justify-between gap-4 px-5 py-3.5 ${
                 i < arr.length - 1 ? "border-b border-gray-50" : ""
               }`}
             >
-              <span className="text-gray-400 text-sm">{item.label}</span>
-              <span className="text-gray-700 text-sm font-medium">
+              <span className="text-gray-400 text-sm flex-shrink-0">{item.label}</span>
+              <span className="text-gray-700 text-sm font-medium text-right">
                 {item.value}
               </span>
             </div>

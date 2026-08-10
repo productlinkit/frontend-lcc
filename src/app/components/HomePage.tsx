@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   AlertTriangle,
@@ -12,18 +12,24 @@ import {
   Check,
   ChevronDown,
   LifeBuoy,
+  FileClock,
+  FileCheck2,
+  Wallet,
+  Bell,
 } from "lucide-react";
 import { Hero } from "./Hero";
 import { DialogShell } from "./DialogShell";
 import { Button } from "./Button";
 import { tabHref, newsHref } from "../routes";
-import { NEWS_ITEMS, NEWS_CATEGORIES, newsImage } from "../data/newsData";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { SERVICES, CATEGORIES, type ServiceItem } from "./ServicePage";
 import { getServiceConfig, formatLak, formatFee } from "../serviceConfig";
 import { GlassIcon } from "./GlassIcon";
 import { ServiceCard } from "./ServiceCard";
 import { useT, useLang } from "../i18n";
+import { catalog, content, me } from "../api/endpoints";
+import { useQuery } from "../api/hooks";
+import { text, type Lang } from "../api/types";
 import laoFlag from "../../imports/lao-flag.png";
 import bgCta from "../../imports/bg-cta.png";
 import civilPopulationImg from "../../imports/civil-population.png";
@@ -46,6 +52,51 @@ const DEFAULT_HOME_SERVICES = [
 ];
 
 const STORAGE_KEY = "lcc_home_services";
+
+/*
+ * Copy for the parts of the page that only exist now that it reads live data —
+ * the signed-in summary tiles and the load/error/empty states. UI chrome that
+ * was already on the page keeps using the shared `home` dictionary.
+ */
+const COPY = {
+  activeApplications: { en: "Active applications", lo: "ຄຳຮ້ອງທີ່ກຳລັງດຳເນີນ" },
+  readyDocuments: { en: "Documents ready", lo: "ເອກະສານພ້ອມແລ້ວ" },
+  walletBalance: { en: "Wallet balance", lo: "ຍອດເງິນໃນກະເປົ໋າ" },
+  unreadNotifications: { en: "Unread notices", lo: "ແຈ້ງເຕືອນທີ່ຍັງບໍ່ໄດ້ອ່ານ" },
+  retry: { en: "Try again", lo: "ລອງໃໝ່" },
+  summaryError: {
+    en: "We could not load your summary.",
+    lo: "ພວກເຮົາບໍ່ສາມາດໂຫຼດຂໍ້ມູນສະຫຼຸບຂອງທ່ານໄດ້.",
+  },
+  servicesError: {
+    en: "We could not load the service list.",
+    lo: "ພວກເຮົາບໍ່ສາມາດໂຫຼດລາຍການບໍລິການໄດ້.",
+  },
+  servicesEmpty: {
+    en: "No services are open for online requests yet.",
+    lo: "ຍັງບໍ່ມີການບໍລິການທີ່ເປີດຮັບຄຳຮ້ອງອອນລາຍ.",
+  },
+  newsError: {
+    en: "We could not load the news.",
+    lo: "ພວກເຮົາບໍ່ສາມາດໂຫຼດຂ່າວໄດ້.",
+  },
+  newsEmpty: {
+    en: "There are no announcements right now.",
+    lo: "ຍັງບໍ່ມີແຈ້ງການໃນຕອນນີ້.",
+  },
+} as const;
+
+/** "2026-08-06" → "06 Aug 2026", in the reader's language. */
+function formatDate(value: string | undefined, lang: Lang): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(lang === "lo" ? "lo-LA" : "en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 // Quantitative highlights shown below the service list
 const STATS = [
@@ -166,8 +217,46 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
   const [hoveredService, setHoveredService] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [homeServiceIds, setHomeServiceIds] = useState<string[]>(DEFAULT_HOME_SERVICES);
+  // True once the citizen has picked their own shortcuts; until then the list
+  // is whatever the catalogue says is live.
+  const [customized, setCustomized] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [draftIds, setDraftIds] = useState<string[]>(DEFAULT_HOME_SERVICES);
+
+  const c = (key: keyof typeof COPY) => (COPY[key] as Record<Lang, string>)[lang as Lang];
+
+  /* ── Live data ───────────────────────────────────────────────────────── */
+  const summary = useQuery((signal) => me.homeSummary(signal), [isAuthenticated], {
+    enabled: Boolean(isAuthenticated),
+  });
+  const servicesQuery = useQuery((signal) => catalog.services({ phase1: true }, signal), []);
+  const newsQuery = useQuery(
+    (signal) => content.news({ per_page: 3, featured: true }, signal),
+    [],
+  );
+
+  // The catalogue is the source of truth for which services are live; the local
+  // table supplies the icon and the in-app route for each of them.
+  const apiServices = servicesQuery.data ?? [];
+  const decorate = useMemo(() => {
+    const byCode = new Map(apiServices.map((s) => [s.code, s]));
+    return (item: ServiceItem): ServiceItem => {
+      const api = byCode.get(item.id);
+      if (!api) return item;
+      return {
+        ...item,
+        name: api.name.en || item.name,
+        nameLo: api.name.lo || item.nameLo,
+        desc: api.description.en || item.desc,
+        descLo: api.description.lo || item.descLo,
+      };
+    };
+  }, [apiServices]);
+
+  const liveServiceIds = useMemo(
+    () => apiServices.map((s) => s.code).filter((code) => SERVICES.some((s) => s.id === code)),
+    [apiServices],
+  );
 
   // Horizontal sliders (category + featured services)
   const categoryRef = useRef<HTMLDivElement>(null);
@@ -186,6 +275,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
         const parsed = JSON.parse(saved) as string[];
         if (Array.isArray(parsed) && parsed.length > 0) {
           setHomeServiceIds(parsed.slice(0, 7));
+          setCustomized(true);
         }
       } catch {
         // ignore
@@ -199,7 +289,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
   };
 
   const openCustomize = () => {
-    setDraftIds(homeServiceIds);
+    setDraftIds(effectiveServiceIds);
     setShowCustomize(true);
   };
 
@@ -213,20 +303,30 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
 
   const saveCustomize = () => {
     setHomeServiceIds(draftIds);
+    setCustomized(true);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draftIds));
     setShowCustomize(false);
   };
 
-  const homeServices = homeServiceIds
+  const effectiveServiceIds = customized
+    ? homeServiceIds
+    : liveServiceIds.length > 0
+    ? liveServiceIds.slice(0, 7)
+    : DEFAULT_HOME_SERVICES;
+
+  const homeServices = effectiveServiceIds
     .map((id) => SERVICES.find((s) => s.id === id))
-    .filter((s): s is ServiceItem => Boolean(s));
+    .filter((s): s is ServiceItem => Boolean(s))
+    .map(decorate);
 
   const displayedServices = searchQuery.trim()
-    ? SERVICES.filter((s) =>
-        (lang === "lo" ? s.nameLo : s.name)
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-      ).slice(0, 7)
+    ? SERVICES.map(decorate)
+        .filter((s) =>
+          (lang === "lo" ? s.nameLo : s.name)
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        )
+        .slice(0, 7)
     : homeServices;
 
   return (
@@ -234,7 +334,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
       {/* Hero Slider */}
       <Hero
         greeting={t("greeting")}
-        name={isAuthenticated ? (lang === "lo" ? "ສົມໄຊ" : "Somchai") : ""}
+        name={isAuthenticated ? summary.data?.name ?? "" : ""}
         authenticated={isAuthenticated}
         onSignIn={() => onTabChange("account")}
       >
@@ -274,20 +374,100 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
       {/* Content */}
       <div className="px-4 lg:px-8 py-6 space-y-10 max-w-screen-xl mx-auto">
 
-        {/* Action Banner — only when signed in */}
-        {isAuthenticated && showBanner && (
+        {/* Your account at a glance — only when signed in */}
+        {isAuthenticated && summary.loading && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-24 rounded-2xl bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {isAuthenticated && !summary.loading && summary.error && (
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="flex-1 text-red-600 text-sm">
+              {summary.error.message || c("summaryError")}
+            </p>
+            <Button size="sm" variant="secondary" onClick={summary.refetch}>
+              {c("retry")}
+            </Button>
+          </div>
+        )}
+
+        {isAuthenticated && summary.data && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              {
+                key: "apps",
+                icon: FileClock,
+                value: String(summary.data.active_applications),
+                label: c("activeApplications"),
+                tab: "history",
+              },
+              {
+                key: "docs",
+                icon: FileCheck2,
+                value: String(summary.data.ready_documents),
+                label: c("readyDocuments"),
+                tab: "account",
+              },
+              {
+                key: "wallet",
+                icon: Wallet,
+                value: formatLak(summary.data.wallet_balance_lak, lang),
+                label: c("walletBalance"),
+                tab: "wallet",
+              },
+              {
+                key: "notices",
+                icon: Bell,
+                value: String(summary.data.unread_notifications),
+                label: c("unreadNotifications"),
+                tab: "account",
+              },
+            ].map((tile) => {
+              const Icon = tile.icon;
+              return (
+                <button
+                  key={tile.key}
+                  onClick={() => onTabChange(tile.tab)}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md transition-shadow"
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center mb-2.5"
+                    style={{ backgroundColor: "#EEF2FF" }}
+                  >
+                    <Icon className="w-5 h-5" style={{ color: "#344EAD" }} />
+                  </div>
+                  <p className="text-gray-900 text-xl font-bold leading-none truncate">
+                    {tile.value}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-1.5 leading-snug">{tile.label}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Action Banner — whatever the API says needs the citizen next */}
+        {isAuthenticated && showBanner && summary.data?.next_action && (
           <div className="relative flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50">
             <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-amber-800 text-sm font-semibold leading-snug">
-                {t("actionRequiredTitle")}
+                {/* Older payloads describe the step without a label of their own. */}
+                {text(summary.data.next_action.label, lang) || t("actionRequiredTitle")}
               </p>
-              <p className="text-amber-700 text-xs mt-1 leading-relaxed">
-                {t("actionRequiredDesc")}
-              </p>
+              {summary.data.next_action.reference_no && (
+                <p className="text-amber-700 text-xs mt-1 leading-relaxed">
+                  {summary.data.next_action.reference_no}
+                </p>
+              )}
               <button
+                onClick={() => onTabChange(summary.data?.next_action?.tab ?? "history")}
                 className="mt-2 text-xs font-semibold flex items-center gap-1"
                 style={{ color: "#D97706" }}
               >
@@ -409,7 +589,35 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
           </div>
 
           {/* Service Grid: 7 services + More */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {servicesQuery.loading && !searchQuery.trim() && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-52 rounded-2xl bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {servicesQuery.error && !searchQuery.trim() && (
+            <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="flex-1 text-red-600 text-sm">
+                {servicesQuery.error.message || c("servicesError")}
+              </p>
+              <Button size="sm" variant="secondary" onClick={servicesQuery.refetch}>
+                {c("retry")}
+              </Button>
+            </div>
+          )}
+
+          {!servicesQuery.loading && !servicesQuery.error && !searchQuery.trim() && displayedServices.length === 0 && (
+            <p className="text-center py-10 text-gray-400 text-sm">{c("servicesEmpty")}</p>
+          )}
+
+          <div
+            className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${
+              servicesQuery.loading && !searchQuery.trim() ? "hidden" : ""
+            }`}
+          >
             {displayedServices.map((service) => (
               <ServiceCard
                 key={service.id}
@@ -592,47 +800,79 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
         <div>
           <SectionHeader title={t("latestUpdates")} subtitle={t("latestUpdatesSub")} />
 
+          {newsQuery.loading && (
+            <div className="flex gap-4 -mx-1 px-1">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-[82%] sm:w-[46%] lg:w-[calc((100%-2rem)/3)] h-80 rounded-2xl bg-gray-100 animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {!newsQuery.loading && newsQuery.error && (
+            <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="flex-1 text-red-600 text-sm">
+                {newsQuery.error.message || c("newsError")}
+              </p>
+              <Button size="sm" variant="secondary" onClick={newsQuery.refetch}>
+                {c("retry")}
+              </Button>
+            </div>
+          )}
+
+          {!newsQuery.loading && !newsQuery.error && (newsQuery.data?.data.length ?? 0) === 0 && (
+            <p className="text-center py-10 text-gray-400 text-sm">{c("newsEmpty")}</p>
+          )}
+
+          {!newsQuery.loading && !newsQuery.error && (newsQuery.data?.data.length ?? 0) > 0 && (
           <div
             ref={newsRef}
             className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none" }}
           >
-            {NEWS_ITEMS.map((item) => {
-              const meta = NEWS_CATEGORIES[item.category];
+            {(newsQuery.data?.data ?? []).map((item) => {
+              const color = item.category_color || "#344EAD";
               return (
                 <a
                   key={item.id}
-                  href={newsHref(item.id)}
+                  href={newsHref(item.slug)}
                   className="flex-shrink-0 w-[82%] sm:w-[46%] lg:w-[calc((100%-2rem)/3)] snap-start bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col hover:border-gray-200 hover:shadow-md transition-all"
                 >
                   {/* thumbnail */}
                   <div className="relative h-40 w-full overflow-hidden">
                     <div
                       className="absolute inset-0"
-                      style={{ background: `linear-gradient(135deg, ${meta.color} 0%, #17235c 100%)` }}
+                      style={{ background: `linear-gradient(135deg, ${color} 0%, #17235c 100%)` }}
                     />
-                    <img
-                      src={newsImage(item.img)}
-                      alt=""
-                      aria-hidden
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    {item.cover_url && (
+                      <img
+                        src={item.cover_url}
+                        alt=""
+                        aria-hidden
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
                     <span
-                      className="absolute top-3 left-3 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                      style={{ backgroundColor: meta.bg, color: meta.color }}
+                      className="absolute top-3 left-3 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white"
+                      style={{ color }}
                     >
-                      {meta[lang]}
+                      {text(item.category_name, lang)}
                     </span>
                   </div>
                   {/* body */}
                   <div className="p-4 flex flex-col flex-1">
-                    <p className="text-gray-500 text-xs">{item.date[lang]}</p>
+                    <p className="text-gray-500 text-xs">
+                      {formatDate(item.published_date || item.published_at, lang)}
+                    </p>
                     <p className="text-gray-800 text-base font-semibold leading-snug mt-1">
-                      {item[lang].title}
+                      {text(item.title, lang)}
                     </p>
                     <p className="text-gray-500 text-sm mt-1.5 leading-relaxed flex-1">
-                      {item[lang].desc}
+                      {text(item.excerpt, lang)}
                     </p>
                     <span
                       className="mt-4 self-start inline-flex items-center gap-1 text-sm font-semibold"
@@ -646,6 +886,7 @@ export function HomePage({ onTabChange, isAuthenticated }: HomePageProps) {
               );
             })}
           </div>
+          )}
 
           {/* slider controls + view all */}
           <div className="flex items-center justify-center gap-3 mt-6">

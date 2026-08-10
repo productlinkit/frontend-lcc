@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SessionProvider, useSession } from "./api/session";
 import { tabFromHash, navigateTo, newsIdFromHash } from "./routes";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./components/HomePage";
@@ -34,12 +35,24 @@ const PROTECTED_TABS = new Set([
 ]);
 
 export default function App() {
+  return (
+    <SessionProvider>
+      <Shell />
+    </SessionProvider>
+  );
+}
+
+function Shell() {
+  // The session lives in the API layer, so a reload keeps the citizen signed in
+  // and every request carries their token without the page knowing about it.
+  const session = useSession();
+  const isAuthenticated = session.isAuthenticated;
+
   // The URL hash is the source of truth for navigation; state mirrors it.
   const [activeTab, setActiveTab] = useState(tabFromHash);
   // Full hash too, so a param-only change (e.g. #/news/1 → #/news/2, same tab)
   // still re-renders; keyed on the page below to remount the detail view.
   const [hash, setHash] = useState(() => window.location.hash);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
 
   // hashchange can fire before a re-render publishes new auth state, so read it
@@ -70,7 +83,7 @@ export default function App() {
     applyHash(); // handles a deep link on first load
     window.addEventListener("hashchange", applyHash);
     return () => window.removeEventListener("hashchange", applyHash);
-  }, []);
+  }, [session.loading]);
 
   function handleTabChange(tab: string) {
     if (PROTECTED_TABS.has(tab) && !isAuthenticated) {
@@ -81,11 +94,20 @@ export default function App() {
   }
 
   function handleAuthSuccess() {
-    setIsAuthenticated(true);
     authRef.current = true; // let the hashchange below pass the auth gate
     const dest = pendingRef.current ?? "account";
     setPendingTab(null);
     navigateTo(dest);
+  }
+
+  // Reading the stored token takes a moment. Rendering the gate before it
+  // resolves would bounce a signed-in citizen to the login screen on reload.
+  if (session.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+      </div>
+    );
   }
 
   // Auth renders fullscreen — no navbar

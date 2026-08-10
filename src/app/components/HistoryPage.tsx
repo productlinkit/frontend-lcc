@@ -1,124 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   Clock,
   CheckCircle,
   XCircle,
   ChevronRight,
-  History as HistoryIcon,
+  ChevronLeft,
   Search,
   Filter,
+  RefreshCw,
+  AlertOctagon,
+  Timer,
 } from "lucide-react";
-import { HistoryDetailPage, type HistoryItem } from "./HistoryDetailPage";
-import { useT } from "../i18n";
+import {
+  HistoryDetailPage,
+  PIPELINE,
+  bucketOf,
+  formatDate,
+  paymentChipStyle,
+  paymentLabel,
+  progressOf,
+  type StatusBucket,
+} from "./HistoryDetailPage";
+import { useT, useLang } from "../i18n";
+import { useDebounced, useQuery } from "../api/hooks";
+import { applications } from "../api/endpoints";
+import { useSession } from "../api/session";
+import { text, type ApplicationRow, type CaseStatus } from "../api/types";
 
-const HISTORY: HistoryItem[] = [
-  {
-    id: 1,
-    service: "serviceResidentCertificate",
-    refNo: "RC-2026-00341",
-    date: "18 Apr 2026",
-    submittedAt: "15 Apr 2026, 09:24",
-    status: "approved",
-    statusLabel: "statusApproved",
-    fee: "20,000 ₭",
-    office: "officeVientianeDistrict",
-    steps: [
-      { label: "stepSubmitted", date: "15 Apr 2026, 09:24", done: true },
-      { label: "stepUnderReview", date: "16 Apr 2026, 11:05", done: true },
-      { label: "stepDocumentVerified", date: "17 Apr 2026, 15:30", done: true },
-      { label: "stepApproved", date: "18 Apr 2026, 10:12", done: true },
-    ],
-    currentStep: 3,
-  },
-  {
-    id: 2,
-    service: "serviceResidentCertificate",
-    refNo: "RC-2026-00289",
-    date: "10 Apr 2026",
-    submittedAt: "08 Apr 2026, 14:11",
-    status: "rejected",
-    statusLabel: "statusRejected",
-    fee: "20,000 ₭",
-    office: "officeVientianeDistrict",
-    rejectionReason: "rejectionReasonUnclearId",
-    fixSteps: [
-      "fixStepRescan",
-      "fixStepCorners",
-      "fixStepResolution",
-      "fixStepReupload",
-    ],
-    steps: [
-      { label: "stepSubmitted", date: "08 Apr 2026, 14:11", done: true },
-      { label: "stepUnderReview", date: "09 Apr 2026, 09:40", done: true },
-      { label: "stepRejected", date: "10 Apr 2026, 16:22", done: true, error: true },
-    ],
-    currentStep: 2,
-  },
-  {
-    id: 3,
-    service: "serviceBiographyCv",
-    refNo: "BCV-2026-00174",
-    date: "02 Apr 2026",
-    submittedAt: "02 Apr 2026, 08:50",
-    status: "pending",
-    statusLabel: "statusInReview",
-    fee: "15,000 ₭",
-    office: "officeMinistryOfLabour",
-    steps: [
-      { label: "stepSubmitted", date: "02 Apr 2026, 08:50", done: true },
-      { label: "stepUnderReview", date: "03 Apr 2026, 10:00", done: true },
-      { label: "stepDocumentVerified", dateKey: "dateEstimatedDays", done: false },
-      { label: "stepApproved", dateKey: "datePending", done: false },
-    ],
-    currentStep: 1,
-    estimatedCompletion: "eta23BusinessDays",
-  },
-  {
-    id: 4,
-    service: "serviceBirthCertificate",
-    refNo: "BC-2026-00091",
-    date: "20 Mar 2026",
-    submittedAt: "16 Mar 2026, 11:30",
-    status: "approved",
-    statusLabel: "statusApproved",
-    fee: "10,000 ₭",
-    office: "officeCivilRegistryVientiane",
-    steps: [
-      { label: "stepSubmitted", date: "16 Mar 2026, 11:30", done: true },
-      { label: "stepUnderReview", date: "17 Mar 2026, 09:15", done: true },
-      { label: "stepDocumentVerified", date: "19 Mar 2026, 14:20", done: true },
-      { label: "stepApproved", date: "20 Mar 2026, 10:00", done: true },
-    ],
-    currentStep: 3,
-  },
-  {
-    id: 5,
-    service: "serviceGeneralApplication",
-    refNo: "GA-2026-00058",
-    date: "10 Mar 2026",
-    submittedAt: "07 Mar 2026, 16:00",
-    status: "approved",
-    statusLabel: "statusApproved",
-    fee: "5,000 ₭",
-    office: "officeDistrictAdministrative",
-    steps: [
-      { label: "stepSubmitted", date: "07 Mar 2026, 16:00", done: true },
-      { label: "stepUnderReview", date: "08 Mar 2026, 09:20", done: true },
-      { label: "stepDocumentVerified", date: "09 Mar 2026, 13:00", done: true },
-      { label: "stepApproved", date: "10 Mar 2026, 11:45", done: true },
-    ],
-    currentStep: 3,
-  },
-];
+/*
+ * Every case the citizen has opened, straight from /applications.
+ *
+ * Filtering, searching and paging all happen server-side: the chip sets the
+ * `status` values, the search box sets `search`, and the page number rides
+ * along, so what is on screen is what the API returned rather than a slice of
+ * a list held in the browser.
+ */
 
-const STATUS_CONFIG: Record<
-  string,
-  { bg: string; text: string; ring: string; icon: React.ElementType }
-> = {
+const PER_PAGE = 10;
+
+const STATUS_CONFIG: Record<StatusBucket, { bg: string; text: string; ring: string; icon: React.ElementType }> = {
   approved: { bg: "#DCFCE7", text: "#15803D", ring: "#86EFAC", icon: CheckCircle },
   rejected: { bg: "#FEE2E2", text: "#DC2626", ring: "#FCA5A5", icon: XCircle },
   pending: { bg: "#FEF3C7", text: "#D97706", ring: "#FCD34D", icon: Clock },
+};
+
+/** Chip id → the backend statuses it stands for. */
+const FILTER_STATUSES: Record<string, CaseStatus[] | undefined> = {
+  all: undefined,
+  pending: ["draft", "submitted", "certified", "under-review"],
+  approved: ["registered", "issued"],
+  rejected: ["returned", "rejected", "revoked"],
 };
 
 const FILTERS = [
@@ -130,37 +62,70 @@ const FILTERS = [
 
 export function HistoryPage() {
   const t = useT("history");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const tc = useT("common");
+  const { lang } = useLang();
+  const { isAuthenticated } = useSession();
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const search = useDebounced(query.trim(), 350);
 
-  const selected = HISTORY.find((h) => h.id === selectedId) || null;
+  // A new filter or search term starts again from the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
-  if (selected) {
+  const list = useQuery(
+    (signal) =>
+      applications.list(
+        {
+          page,
+          per_page: PER_PAGE,
+          status: FILTER_STATUSES[filter],
+          search: search || undefined,
+        },
+        signal,
+      ),
+    [page, filter, search],
+    { enabled: isAuthenticated },
+  );
+
+  // The four stat tiles are counts, so each asks for a single row and reads the
+  // total out of the pagination block.
+  const counts = useQuery(
+    async (signal) => {
+      const ask = (status?: CaseStatus[]) =>
+        applications.list({ page: 1, per_page: 1, status }, signal).then((p) => p.meta.total);
+      const [total, approved, pending, rejected] = await Promise.all([
+        ask(),
+        ask(FILTER_STATUSES.approved),
+        ask(FILTER_STATUSES.pending),
+        ask(FILTER_STATUSES.rejected),
+      ]);
+      return { total, approved, pending, rejected };
+    },
+    [],
+    { enabled: isAuthenticated },
+  );
+
+  if (selectedId) {
     return (
       <HistoryDetailPage
-        item={selected}
-        onBack={() => setSelectedId(null)}
+        applicationId={selectedId}
+        onBack={() => {
+          setSelectedId(null);
+          list.refetch();
+          counts.refetch();
+        }}
       />
     );
   }
 
-  const filtered = HISTORY.filter((h) => {
-    const matchesFilter = filter === "all" || h.status === filter;
-    const q = query.trim().toLowerCase();
-    const matchesQuery =
-      !q ||
-      t(h.service as "serviceResidentCertificate").toLowerCase().includes(q) ||
-      h.refNo.toLowerCase().includes(q);
-    return matchesFilter && matchesQuery;
-  });
-
-  const counts = {
-    total: HISTORY.length,
-    approved: HISTORY.filter((h) => h.status === "approved").length,
-    pending: HISTORY.filter((h) => h.status === "pending").length,
-    rejected: HISTORY.filter((h) => h.status === "rejected").length,
-  };
+  const rows = list.data?.data ?? [];
+  const meta = list.data?.meta;
+  const tiles = counts.data ?? { total: 0, approved: 0, pending: 0, rejected: 0 };
 
   return (
     <div className="min-h-full">
@@ -195,10 +160,10 @@ export function HistoryPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: t("statTotal"), value: counts.total, color: "#344EAD", bg: "#EEF2FF" },
-            { label: t("statApproved"), value: counts.approved, color: "#16A34A", bg: "#DCFCE7" },
-            { label: t("statInReview"), value: counts.pending, color: "#D97706", bg: "#FEF3C7" },
-            { label: t("statRejected"), value: counts.rejected, color: "#DC2626", bg: "#FEE2E2" },
+            { label: t("statTotal"), value: tiles.total, color: "#344EAD", bg: "#EEF2FF" },
+            { label: t("statApproved"), value: tiles.approved, color: "#16A34A", bg: "#DCFCE7" },
+            { label: t("statInReview"), value: tiles.pending, color: "#D97706", bg: "#FEF3C7" },
+            { label: t("statRejected"), value: tiles.rejected, color: "#DC2626", bg: "#FEE2E2" },
           ].map((s) => (
             <div
               key={s.label}
@@ -215,7 +180,7 @@ export function HistoryPage() {
                 className="mt-1"
                 style={{ color: s.color, fontSize: "22px", fontWeight: 600 }}
               >
-                {s.value}
+                {counts.loading ? "—" : s.value}
               </p>
             </div>
           ))}
@@ -252,23 +217,70 @@ export function HistoryPage() {
         </div>
 
         {/* List */}
-        {filtered.length === 0 ? (
+        {!isAuthenticated ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
               <FileText className="w-6 h-6 text-gray-400" />
             </div>
             <p className="text-gray-700 text-sm font-medium">{t("emptyTitle")}</p>
-            <p className="text-gray-400 text-xs mt-1">{t("emptySubtitle")}</p>
+            <p className="text-gray-400 text-xs mt-1">
+              {lang === "lo"
+                ? "ເຂົ້າສູ່ລະບົບເພື່ອເບິ່ງຄຳຮ້ອງຂອງທ່ານ"
+                : "Sign in to see the applications you have submitted"}
+            </p>
+          </div>
+        ) : list.loading && rows.length === 0 ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 animate-pulse">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex-shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-3.5 w-2/5 bg-gray-200 rounded" />
+                    <div className="h-3 w-1/4 bg-gray-100 rounded" />
+                    <div className="h-1.5 w-full bg-gray-100 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : list.error ? (
+          <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <AlertOctagon className="w-6 h-6" style={{ color: "#DC2626" }} />
+            </div>
+            <p className="text-gray-700 text-sm font-medium">{list.error.message}</p>
+            <button
+              onClick={list.refetch}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold"
+              style={{ backgroundColor: "#344EAD" }}
+            >
+              <RefreshCw className="w-4 h-4" />
+              {lang === "lo" ? "ລອງໃໝ່" : "Try again"}
+            </button>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <FileText className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="text-gray-700 text-sm font-medium">{t("emptyTitle")}</p>
+            <p className="text-gray-400 text-xs mt-1">
+              {search || filter !== "all"
+                ? t("emptySubtitle")
+                : lang === "lo"
+                ? "ເມື່ອທ່ານຍື່ນຄຳຮ້ອງ ມັນຈະປາກົດຢູ່ບ່ອນນີ້."
+                : "Once you submit a request it will show up here."}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((item) => {
-              const config = STATUS_CONFIG[item.status];
+            {rows.map((item: ApplicationRow) => {
+              const bucket = bucketOf(item.status);
+              const config = STATUS_CONFIG[bucket];
               const StatusIcon = config.icon;
-              const totalSteps = item.steps.length;
-              const progressPct = Math.round(
-                ((item.currentStep + 1) / totalSteps) * 100
-              );
+              const stage = PIPELINE.indexOf(item.status);
+              const progressPct = progressOf(item.status);
 
               return (
                 <button
@@ -297,17 +309,17 @@ export function HistoryPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-gray-800 text-sm font-semibold leading-snug">
-                            {t(item.service as "serviceResidentCertificate")}
+                            {text(item.service_name, lang)}
                           </p>
                           <p className="text-gray-400 text-xs mt-0.5">
-                            {t("ref")} · {item.refNo}
+                            {t("ref")} · {item.reference_no}
                           </p>
                         </div>
                         <span
                           className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide"
                           style={{ backgroundColor: config.bg, color: config.text }}
                         >
-                          {t(item.statusLabel as "statusApproved")}
+                          {text(item.status_label, lang)}
                         </span>
                       </div>
 
@@ -316,12 +328,9 @@ export function HistoryPage() {
                         <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
                           <span>
                             {t("stepProgress", {
-                              current: item.currentStep + 1,
-                              total: totalSteps,
-                              label: t(
-                                item.steps[item.currentStep]
-                                  .label as "stepSubmitted"
-                              ),
+                              current: Math.max(1, stage + 1),
+                              total: PIPELINE.length,
+                              label: text(item.status_label, lang),
                             })}
                           </span>
                           <span>{progressPct}%</span>
@@ -332,9 +341,9 @@ export function HistoryPage() {
                             style={{
                               width: `${progressPct}%`,
                               backgroundColor:
-                                item.status === "rejected"
+                                bucket === "rejected"
                                   ? "#DC2626"
-                                  : item.status === "approved"
+                                  : bucket === "approved"
                                   ? "#16A34A"
                                   : "#344EAD",
                             }}
@@ -342,9 +351,38 @@ export function HistoryPage() {
                         </div>
                       </div>
 
+                      {/* Payment + SLA */}
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={paymentChipStyle(item.payment_state)}
+                        >
+                          {paymentLabel(item.payment_state, lang)}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                          style={
+                            item.is_overdue
+                              ? { backgroundColor: "#FEE2E2", color: "#DC2626" }
+                              : { backgroundColor: "#F3F4F6", color: "#6B7280" }
+                          }
+                        >
+                          <Timer className="w-3 h-3" />
+                          {item.is_overdue
+                            ? lang === "lo"
+                              ? `ເກີນກຳນົດ ${item.days_overdue} ມື້`
+                              : `${item.days_overdue} days overdue`
+                            : lang === "lo"
+                            ? `ລໍຖ້າ ${item.days_waiting}/${item.sla_days} ມື້`
+                            : `${item.days_waiting}/${item.sla_days} days`}
+                        </span>
+                      </div>
+
                       <div className="flex items-center justify-between mt-3">
                         <p className="text-[11px] text-gray-400">
-                          {t("submittedOn", { date: item.date })}
+                          {t("submittedOn", {
+                            date: formatDate(item.submitted_at ?? item.created_at, lang),
+                          })}
                         </p>
                         <span
                           className="flex items-center gap-1 text-xs font-medium group-hover:gap-1.5 transition-all"
@@ -359,6 +397,31 @@ export function HistoryPage() {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Paging */}
+        {meta && meta.total_pages > 1 && (
+          <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={!meta.has_prev || list.loading}
+              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 disabled:opacity-40"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              {tc("back")}
+            </button>
+            <p className="text-xs text-gray-500">
+              {meta.page} / {meta.total_pages} · {meta.total}
+            </p>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!meta.has_next || list.loading}
+              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 disabled:opacity-40"
+            >
+              {tc("next")}
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 

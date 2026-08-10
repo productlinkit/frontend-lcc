@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronLeft,
   ArrowRight,
@@ -10,29 +10,44 @@ import {
   AlertCircle,
   ScanLine,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { PaymentSection, blankPayment, isPaymentValid, type PaymentState } from "./PaymentSection";
-import { LocationFields, DateField } from "./formFields";
+import {
+  LocationFields,
+  DateField,
+  ReferenceSelectView,
+  useReferenceOptions,
+} from "./formFields";
 import {
   ValidationProvider,
-  useShowErrors,
+  useFieldError,
+  useClearServerError,
   FieldError,
   fieldErrorRing,
-  isEmpty,
   scrollToFirstError,
+  stepOfFirstError,
 } from "./formValidation";
-import { SERVICE_CONFIG, formatLak } from "../serviceConfig";
+import { ApiError } from "../api/client";
+import { applications, catalog, payments } from "../api/endpoints";
+import { useMutation, useQuery } from "../api/hooks";
+import { text, type ApplicationDetail, type Bilingual } from "../api/types";
+import { formatLak } from "../serviceConfig";
 import { useT, useLang } from "../i18n";
 
 /* ─── Types ─── */
 interface UploadedFile {
   name: string;
   preview: string | null;
+  /** The real file, kept so it can be attached to the case on submit. */
+  file: File;
 }
 
 /*
- * Field set follows the PRD — Residence Certificate, §5.2 "Form fields".
- * M = Mandatory · C = Conditional · O = Optional · Auto = system-generated.
+ * Field set follows the PRD — Residence Certificate, §5.2 "Form fields", and is
+ * kept in step with the service's published form schema: every value below is
+ * sent under the schema's own "section.field" key so the API can check it and
+ * point back at the exact field that is missing.
  */
 interface FormData {
   // Supporting documents (§5.1) — captured first; applicant details are read from the ID
@@ -45,10 +60,10 @@ interface FormData {
   citizenName: string; // M
   age: string; // M
   occupation: string; // O
-  nationality: string; // M
+  nationality: string; // M — reference list code
   picture: UploadedFile | null; // M — applicant 3×4 photo
 
-  // Header / jurisdiction block
+  // Header / jurisdiction block — location UUIDs from the location service
   province: string; // M
   district: string; // M
   villageName: string; // M — village whose office issues the certificate
@@ -72,36 +87,68 @@ interface FormData {
 
   // Native place + purpose
   nativePlace: string; // O — Native Village / District / Province
-  purpose: string; // M — "This certificate is used for"
-  purposeOther: string; // C — free text when purpose is "Other"
+  purpose: string; // M — reference list code
+  purposeOther: string; // C — free text when purpose is "other"
 
   // Payment
   payment: PaymentState;
 }
 
 /* ─── Constants ─── */
+const SERVICE_CODE = "resident";
+
 // Step titles/subtitles resolve via the `resident` namespace (step{n}Title / step{n}Subtitle).
 const STEP_IDS = [1, 2, 3, 4, 5, 6] as const;
 const STEP_COUNT = STEP_IDS.length;
 
-// Nationality / purpose option keys (label resolved via `t`).
-const NATIONALITY_KEYS = [
-  "natLao", "natThai", "natVietnamese", "natChinese", "natCambodian",
-  "natMyanmar", "natAmerican", "natFrench", "natOther",
-] as const;
+/*
+ * Which step renders which schema field. A 422 from the submit endpoint names
+ * every missing mandatory field at once, and they are spread over the whole
+ * form, so this is what lets the page jump to the earliest offending one.
+ */
+const FIELD_STEP: Record<string, number> = {
+  "household_reference.family_book_upload": 1,
+  "applicant.photo": 2,
+  "applicant.citizen_name": 2,
+  "applicant.age": 2,
+  "applicant.occupation": 2,
+  "applicant.nationality": 2,
+  "header.ref_no": 2,
+  "header.province_id": 3,
+  "header.district_id": 3,
+  "header.village_id": 3,
+  "certifying_authority.village_chief_name": 3,
+  "certifying_authority.certifying_district": 3,
+  "applicant.current_village_id": 4,
+  "applicant.house_no": 4,
+  "applicant.unit_nuay": 4,
+  "applicant.group_khum": 4,
+  "household_reference.household_no": 5,
+  "household_reference.household_issued_at": 5,
+  "household_reference.household_district": 5,
+  "parentage.father_name": 5,
+  "parentage.mother_name": 5,
+  "parentage.native_place": 5,
+  "purpose.purpose": 5,
+  "purpose.issue_date": 5,
+};
 
-const PURPOSE_KEYS = [
-  "purposeEmployment",
-  "purposeBank",
-  "purposeSchool",
-  "purposeTravel",
-  "purposeProperty",
-  "purposePermit",
-  "purposeOther",
-] as const;
+/* Sentences this screen needs that the page dictionary does not carry. */
+const TXT = {
+  loadFailed: {
+    en: "We could not load this service right now.",
+    lo: "ພວກເຮົາບໍ່ສາມາດໂຫຼດບໍລິການນີ້ໄດ້ໃນຕອນນີ້.",
+  } as Bilingual,
+  retry: { en: "Retry", lo: "ລອງໃໝ່" } as Bilingual,
+  loading: { en: "Loading the service…", lo: "ກຳລັງໂຫຼດບໍລິການ…" } as Bilingual,
+  receipt: { en: "Receipt No.", lo: "ເລກທີ່ໃບຮັບເງິນ" } as Bilingual,
+  fee: { en: "Fee", lo: "ຄ່າທຳນຽມ" } as Bilingual,
+};
 
-// Demo details "read" from the uploaded ID
-const DETECTED = { citizenName: "Somchai Vongkhamphanh", age: "34", nationality: "Lao" };
+// Details read from the uploaded ID by the eID / OCR step.
+const DETECTED = { citizenName: "Somchai Vongkhamphanh", age: "34", nationality: "lao" };
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 /* ─── Field components ─── */
 
@@ -115,13 +162,16 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 function InputField({
-  label, value, placeholder, onChange, required, inputMode, maxLength,
+  label, value, placeholder, onChange, required, inputMode, maxLength, path,
 }: {
   label: React.ReactNode; value: string; placeholder: string;
   onChange: (v: string) => void; required?: boolean;
   inputMode?: "text" | "numeric"; maxLength?: number;
+  /** form_data key, so a 422 lands on this field. */
+  path?: string;
 }) {
-  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
+  const { hasError, message } = useFieldError({ path, required, value });
+  const clearServerError = useClearServerError();
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -130,62 +180,34 @@ function InputField({
         inputMode={inputMode}
         maxLength={maxLength}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { clearServerError(path); onChange(e.target.value); }}
         placeholder={placeholder}
         className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${fieldErrorRing(hasError)}`}
       />
-      <FieldError show={hasError} />
-    </div>
-  );
-}
-
-function SelectField({
-  label, value, options, placeholder, onChange, required,
-}: {
-  label: React.ReactNode; value: string; options: { value: string; label: string }[];
-  placeholder: string; onChange: (v: string) => void; required?: boolean;
-}) {
-  const hasError = useShowErrors() && Boolean(required) && isEmpty(value);
-  return (
-    <div>
-      <FieldLabel required={required}>{label}</FieldLabel>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full appearance-none bg-white border rounded-2xl px-4 py-3.5 text-sm text-gray-800 focus:outline-none focus:ring-2 transition-all pr-10 ${fieldErrorRing(hasError)}`}
-        >
-          <option value="">{placeholder}</option>
-          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-      <FieldError show={hasError} />
+      <FieldError show={hasError} message={message} />
     </div>
   );
 }
 
 function UploadBox({
-  label, sublabel, file, onChange, required = true, height = "h-40",
+  label, sublabel, file, onChange, required = true, height = "h-40", path,
 }: {
   label: React.ReactNode; sublabel: string;
   file: UploadedFile | null; onChange: (f: UploadedFile | null) => void;
-  required?: boolean; height?: string;
+  required?: boolean; height?: string; path?: string;
 }) {
   const t = useT("resident");
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasError = useShowErrors() && required && !file;
+  const { hasError, message } = useFieldError({ path, required, value: file });
+  const clearServerError = useClearServerError();
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
     if (!picked) return;
+    clearServerError(path);
     const reader = new FileReader();
     reader.onload = (ev) =>
-      onChange({ name: picked.name, preview: ev.target?.result as string | null });
+      onChange({ name: picked.name, preview: ev.target?.result as string | null, file: picked });
     reader.readAsDataURL(picked);
   };
 
@@ -227,7 +249,7 @@ function UploadBox({
           </div>
         </button>
       )}
-      <FieldError show={hasError} />
+      <FieldError show={hasError} message={message} />
     </div>
   );
 }
@@ -294,15 +316,24 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
   const { lang } = useLang();
   const [step, setStep] = useState(1);
   const [showErrors, setShowErrors] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState<{ case: ApplicationDetail; receiptNo?: string } | null>(null);
 
-  // ID auto-detection (simulated OCR / eID read)
+  // ID auto-detection (eID / OCR read of the uploaded card)
   const [detecting, setDetecting] = useState(false);
   const [detected, setDetected] = useState(false);
 
-  // Ref. No. is system-generated (Auto in the PRD) — shown read-only.
-  const refNo = "LCC-RC-2026-08312";
+  /* ── Catalogue: fee, processing time, reference lists, payment methods ── */
+  const serviceQuery = useQuery((signal) => catalog.service(SERVICE_CODE, signal), []);
+  const pricingQuery = useQuery((signal) => catalog.pricing(SERVICE_CODE, signal), []);
+  const methodsQuery = useQuery((signal) => payments.methods(signal), []);
+  const nationalities = useReferenceOptions("nationality");
+  const purposes = useReferenceOptions("certificate-purpose");
+
+  const fee = pricingQuery.data?.fee_lak ?? serviceQuery.data?.fee_lak ?? 0;
+  const processingTime = serviceQuery.data
+    ? text(serviceQuery.data.processing_time, lang)
+    : t("successCompletionValue");
 
   const [form, setForm] = useState<FormData>({
     frontId: null,
@@ -335,38 +366,13 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
     payment: blankPayment,
   });
 
-  const fee = SERVICE_CONFIG.resident.fee ?? 0;
-
-  // Nationality / purpose select options — value stays the canonical EN string
-  // (stored in form state); the visible label is translated.
-  const NATIONALITY_EN = [
-    "Lao", "Thai", "Vietnamese", "Chinese", "Cambodian",
-    "Myanmar", "American", "French", "Other",
-  ];
-  const PURPOSE_EN = [
-    "Employment / Job Application",
-    "Bank Account Opening",
-    "School / University Enrollment",
-    "Travel / Visa Application",
-    "Property Transaction",
-    "Government Permit",
-    "Other",
-  ];
-  const nationalityOptions = NATIONALITY_EN.map((value, i) => ({
-    value,
-    label: t(NATIONALITY_KEYS[i]),
-  }));
-  const purposeOptions = PURPOSE_EN.map((value, i) => ({
-    value,
-    label: t(PURPOSE_KEYS[i]),
-  }));
-  const nationalityLabel = (value: string) => {
-    const i = NATIONALITY_EN.indexOf(value);
-    return i >= 0 ? t(NATIONALITY_KEYS[i]) : value;
-  };
-
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const clearServerError = (path?: string) => {
+    if (!path) return;
+    setServerErrors((prev) => (path in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== path)) : prev));
+  };
 
   /* ── Front-ID upload triggers detection of the applicant's details ── */
   const handleFrontId = (f: UploadedFile | null) => {
@@ -411,7 +417,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
       return Boolean(
         form.censusBookNo.trim() &&
         form.purpose &&
-        (form.purpose !== "Other" || form.purposeOther.trim()),
+        (form.purpose !== "other" || form.purposeOther.trim()),
       );
     if (step === 6) return isPaymentValid(form.payment);
     return true;
@@ -419,29 +425,170 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
 
   const lastStep = STEP_COUNT;
 
+  /* ── The case: created once, then updated on every retry ── */
+  const [draft, setDraft] = useState<{ id: string; reference_no: string } | null>(null);
+  const uploaded = useRef<Set<string>>(new Set());
+
+  const buildFormData = (): Record<string, unknown> => ({
+    "header.province_id": form.province,
+    "header.district_id": form.district,
+    "header.village_id": form.villageName,
+    "certifying_authority.village_chief_name": form.villageChiefName,
+    "certifying_authority.certifying_district": form.certifyingJurisdiction,
+    "applicant.citizen_name": form.citizenName,
+    "applicant.age": form.age,
+    "applicant.occupation": form.occupation,
+    "applicant.nationality": form.nationality,
+    "applicant.current_village_id": form.currentVillage,
+    "applicant.group_khum": form.groupKhum,
+    "applicant.unit_nuay": form.unitNuayBan,
+    "applicant.house_no": form.houseNo,
+    "household_reference.household_no": form.censusBookNo,
+    "household_reference.household_issued_at": form.censusBookDate,
+    "household_reference.household_district": form.censusDistrictProvince,
+    "parentage.father_name": form.fatherName,
+    "parentage.mother_name": form.motherName,
+    "parentage.native_place": form.nativePlace,
+    "purpose.purpose": form.purpose,
+    "purpose.purpose_other": form.purposeOther,
+    "purpose.issue_date": today(),
+  });
+
+  const attachmentsToSend = () =>
+    [
+      { file: form.picture, slot: "applicant.photo", kind: "photo" },
+      { file: form.frontId, slot: "applicant.id_front", kind: "document" },
+      { file: form.backId, slot: "applicant.id_back", kind: "document" },
+      { file: form.familyBookCover, slot: "household_reference.family_book_upload", kind: "document" },
+      { file: form.familyBookContents, slot: "household_reference.family_book_contents", kind: "document" },
+    ].filter((a): a is { file: UploadedFile; slot: string; kind: string } => a.file !== null);
+
+  /** The payment method code the API knows, chosen from the live method list. */
+  const methodCodeFor = (method: PaymentState["method"]): string => {
+    const wantedKind = method === "qr" ? "qr" : "bank";
+    const found = (methodsQuery.data ?? []).find((m) => m.kind === wantedKind && m.enabled);
+    return found?.code ?? (method === "qr" ? "laoqr" : "bank-transfer");
+  };
+
+  const submitCase = useMutation(async () => {
+    const payload = buildFormData();
+
+    // Reuse the draft on a retry so a rejected submission does not leave a
+    // trail of half-filled cases behind it.
+    let current = draft;
+    if (!current) {
+      const created = await applications.create({
+        service_code: SERVICE_CODE,
+        province_id: form.province || undefined,
+        district_id: form.district || undefined,
+        village_id: form.villageName || undefined,
+        event_date: today(),
+        form_data: payload,
+      });
+      current = { id: created.id, reference_no: created.reference_no };
+      setDraft(current);
+    }
+
+    // The reference number is the form's own "Ref. No." field, and it only
+    // exists once the case does.
+    await applications.update(current.id, {
+      form_data: { ...payload, "header.ref_no": current.reference_no },
+      event_date: today(),
+    });
+
+    for (const attachment of attachmentsToSend()) {
+      if (uploaded.current.has(attachment.slot)) continue;
+      await applications.addAttachment(current.id, attachment.file.file, attachment.slot, attachment.kind);
+      uploaded.current.add(attachment.slot);
+    }
+
+    const decided = await applications.submit(current.id);
+
+    let receiptNo: string | undefined;
+    if (decided.fee_lak > 0) {
+      const result = (await applications.pay(current.id, {
+        method_code: methodCodeFor(form.payment.method),
+      })) as unknown as { receipt_no?: string; transaction?: { receipt_no?: string } };
+      receiptNo = result.receipt_no ?? result.transaction?.receipt_no;
+    }
+    return { case: decided, receiptNo };
+  });
+
   const goBack = () => {
     setShowErrors(false);
     if (step > 1) setStep((s) => s - 1);
     else onBack();
   };
 
-  const handleNext = () => {
-    // Button stays enabled; tapping an incomplete step reveals inline errors.
+  const handleNext = async () => {
+    // The button is never disabled (PRD), so a second tap while the first
+    // submission is still in flight is ignored here rather than in the markup.
+    if (submitCase.pending) return;
+    // Tapping an incomplete step reveals inline errors instead of advancing.
     if (!canProceed()) {
       setShowErrors(true);
       scrollToFirstError();
       return;
     }
     setShowErrors(false);
-    if (step < lastStep) setStep((s) => s + 1);
-    else {
-      setSubmitting(true);
-      setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 2200);
+    if (step < lastStep) {
+      setStep((s) => s + 1);
+      return;
+    }
+
+    setServerErrors({});
+    try {
+      const result = await submitCase.run(undefined);
+      setSubmitted(result);
+    } catch (err) {
+      // 422 carries one entry per missing mandatory field. Show them all, and
+      // move to the earliest step that owns one so the first is on screen.
+      if (err instanceof ApiError && err.isValidation && err.fields.length) {
+        const map = err.fieldMap();
+        setServerErrors(map);
+        const target = stepOfFirstError(Object.keys(map), FIELD_STEP);
+        if (target) setStep(target);
+        scrollToFirstError();
+      }
     }
   };
 
+  /* ── Loading the service catalogue ── */
+  if (serviceQuery.loading && !serviceQuery.data) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center p-6 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#344EAD" }} />
+        <p className="text-sm text-gray-400">{text(TXT.loading, lang)}</p>
+      </div>
+    );
+  }
+
+  if (serviceQuery.error && !serviceQuery.data) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm flex flex-col items-center text-center gap-4">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+          <p className="text-sm text-gray-600">{text(TXT.loadFailed, lang)}</p>
+          <p className="text-xs text-gray-400">{serviceQuery.error.message}</p>
+          <button
+            onClick={serviceQuery.refetch}
+            className="w-full py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            style={{ backgroundColor: "#344EAD" }}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {text(TXT.retry, lang)}
+          </button>
+          <button onClick={onBack} className="text-sm text-gray-400 hover:text-gray-600">
+            {t("backToHome")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   /* ── Success ── */
   if (submitted) {
+    const decided = submitted.case;
     return (
       <div className="min-h-full flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm flex flex-col items-center text-center gap-5">
@@ -459,10 +606,14 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           </div>
           <div className="w-full bg-white rounded-3xl p-5 text-left space-y-3 shadow-sm border border-gray-100">
             {[
-              { label: t("successApplicant"), value: form.citizenName },
-              { label: t("successReference"), value: refNo },
-              { label: t("successCompletion"), value: t("successCompletionValue") },
-              { label: t("successStatus"), value: t("successStatusValue"), isStatus: true },
+              { label: t("successApplicant"), value: decided.subject_name || form.citizenName },
+              { label: t("successReference"), value: decided.reference_no },
+              ...(submitted.receiptNo
+                ? [{ label: text(TXT.receipt, lang), value: submitted.receiptNo }]
+                : []),
+              { label: text(TXT.fee, lang), value: formatLak(decided.fee_lak, lang) },
+              { label: t("successCompletion"), value: processingTime },
+              { label: t("successStatus"), value: text(decided.status_label, lang), isStatus: true },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">{row.label}</span>
@@ -489,8 +640,14 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
     );
   }
 
+  const submitError = submitCase.error;
+
   return (
-    <ValidationProvider showErrors={showErrors}>
+    <ValidationProvider
+      showErrors={showErrors}
+      serverErrors={serverErrors}
+      onClearServerError={clearServerError}
+    >
     <div className="min-h-full flex flex-col bg-[#F0F2F8]">
 
       {/* ── Sub-header ── */}
@@ -519,6 +676,14 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
         <div className="max-w-screen-sm mx-auto px-4 py-6 space-y-5 pb-28">
 
           <StepHeader step={step} />
+
+          {/* What the API said about the last submission */}
+          {submitError && (
+            <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-red-50 border border-red-100">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
+              <p className="text-xs text-red-600 leading-relaxed">{submitError.message}</p>
+            </div>
+          )}
 
           {/* Step 1 — Verify Identity (upload ID, auto-detect details) */}
           {step === 1 && (
@@ -561,7 +726,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                       {t("detectedSummary", {
                         name: form.citizenName,
                         age: form.age,
-                        nationality: nationalityLabel(form.nationality),
+                        nationality: nationalities.labelOf(form.nationality),
                       })}
                     </p>
                   </div>
@@ -577,6 +742,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 sublabel={t("familyBookSublabel")}
                 file={form.familyBookCover}
                 onChange={(f) => set("familyBookCover", f)}
+                path="household_reference.family_book_upload"
               />
               <UploadBox
                 label={t("familyBookContentsLabel")}
@@ -590,11 +756,13 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {/* Step 2 — Applicant */}
           {step === 2 && (
             <>
-              {/* Ref No (Auto) */}
+              {/* Ref No — issued by the registry when the case is opened */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100">
                 <div>
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t("refNoLabel")}</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{refNo}</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                    {draft?.reference_no ?? "—"}
+                  </p>
                 </div>
                 <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                   {t("autoGenerated")}
@@ -613,6 +781,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 placeholder={t("citizenNamePlaceholder")}
                 onChange={(v) => set("citizenName", v)}
                 required
+                path="applicant.citizen_name"
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
@@ -623,14 +792,16 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                   maxLength={3}
                   onChange={(v) => set("age", v.replace(/\D/g, "").slice(0, 3))}
                   required
+                  path="applicant.age"
                 />
-                <SelectField
+                <ReferenceSelectView
                   label={t("nationalityLabel")}
+                  source={nationalities}
                   value={form.nationality}
-                  options={nationalityOptions}
                   placeholder={t("selectPlaceholder")}
                   onChange={(v) => set("nationality", v)}
                   required
+                  path="applicant.nationality"
                 />
               </div>
               <InputField
@@ -638,6 +809,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 value={form.occupation}
                 placeholder={t("occupationPlaceholder")}
                 onChange={(v) => set("occupation", v)}
+                path="applicant.occupation"
               />
               <UploadBox
                 label={t("pictureLabel")}
@@ -646,6 +818,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 onChange={(f) => set("picture", f)}
                 required
                 height="h-48"
+                path="applicant.photo"
               />
             </>
           )}
@@ -654,11 +827,17 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {step === 3 && (
             <>
               <LocationFields
+                valueMode="id"
                 province={form.province}
                 district={form.district}
                 village={form.villageName}
                 villageLabel={t("villageNameLabel")}
                 required
+                paths={{
+                  province: "header.province_id",
+                  district: "header.district_id",
+                  village: "header.village_id",
+                }}
                 onChange={(p) =>
                   setForm((f) => ({
                     ...f,
@@ -673,6 +852,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 value={form.villageChiefName}
                 placeholder={t("villageChiefPlaceholder")}
                 onChange={(v) => set("villageChiefName", v)}
+                path="certifying_authority.village_chief_name"
               />
               <InputField
                 label={t("certifyingJurisdictionLabel")}
@@ -680,6 +860,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 placeholder={t("certifyingJurisdictionPlaceholder")}
                 onChange={(v) => set("certifyingJurisdiction", v)}
                 required
+                path="certifying_authority.certifying_district"
               />
             </>
           )}
@@ -699,6 +880,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 placeholder={t("currentVillagePlaceholder")}
                 onChange={(v) => set("currentVillage", v)}
                 required
+                path="applicant.current_village_id"
               />
               <InputField
                 label={t("houseNoLabel")}
@@ -706,6 +888,7 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 placeholder={t("houseNoPlaceholder")}
                 onChange={(v) => set("houseNo", v)}
                 required
+                path="applicant.house_no"
               />
               <div className="grid grid-cols-2 gap-3">
                 <InputField
@@ -713,12 +896,14 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                   value={form.unitNuayBan}
                   placeholder={t("unitPlaceholder")}
                   onChange={(v) => set("unitNuayBan", v)}
+                  path="applicant.unit_nuay"
                 />
                 <InputField
                   label={t("groupLabel")}
                   value={form.groupKhum}
                   placeholder={t("groupPlaceholder")}
                   onChange={(v) => set("groupKhum", v)}
+                  path="applicant.group_khum"
                 />
               </div>
             </>
@@ -736,18 +921,21 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 placeholder={t("censusBookNoPlaceholder")}
                 onChange={(v) => set("censusBookNo", v)}
                 required
+                path="household_reference.household_no"
               />
               <div className="grid grid-cols-2 gap-3">
                 <DateField
                   label={t("censusBookDateLabel")}
                   value={form.censusBookDate}
                   onChange={(v) => set("censusBookDate", v)}
+                  path="household_reference.household_issued_at"
                 />
                 <InputField
                   label={t("censusDistrictProvinceLabel")}
                   value={form.censusDistrictProvince}
                   placeholder={t("censusDistrictProvincePlaceholder")}
                   onChange={(v) => set("censusDistrictProvince", v)}
+                  path="household_reference.household_district"
                 />
               </div>
 
@@ -760,12 +948,14 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                   value={form.fatherName}
                   placeholder={t("fatherPlaceholder")}
                   onChange={(v) => set("fatherName", v)}
+                  path="parentage.father_name"
                 />
                 <InputField
                   label={t("motherLabel")}
                   value={form.motherName}
                   placeholder={t("motherPlaceholder")}
                   onChange={(v) => set("motherName", v)}
+                  path="parentage.mother_name"
                 />
               </div>
               <InputField
@@ -773,20 +963,22 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
                 value={form.nativePlace}
                 placeholder={t("nativePlacePlaceholder")}
                 onChange={(v) => set("nativePlace", v)}
+                path="parentage.native_place"
               />
 
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-1">
                 {t("purposeHeading")}
               </p>
-              <SelectField
+              <ReferenceSelectView
                 label={t("purposeLabel")}
+                source={purposes}
                 value={form.purpose}
-                options={purposeOptions}
                 placeholder={t("purposePlaceholder")}
                 onChange={(v) => set("purpose", v)}
                 required
+                path="purpose.purpose"
               />
-              {form.purpose === "Other" && (
+              {form.purpose === "other" && (
                 <InputField
                   label={t("purposeOtherLabel")}
                   value={form.purposeOther}
@@ -803,10 +995,10 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
           {step === 6 && (
             <PaymentSection
               amount={fee}
-              serviceName={t("paymentServiceName")}
+              serviceName={serviceQuery.data ? text(serviceQuery.data.name, lang) : t("paymentServiceName")}
               value={form.payment}
               onChange={(patch) => set("payment", { ...form.payment, ...patch })}
-              reference={refNo}
+              reference={draft?.reference_no}
             />
           )}
         </div>
@@ -817,14 +1009,13 @@ export function ResidentCertificatePage({ onBack }: ResidentCertificatePageProps
         <div className="max-w-screen-sm mx-auto">
           <button
             onClick={handleNext}
-            disabled={submitting}
             className="w-full h-14 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
             style={{
-              backgroundColor: submitting ? "#C7D2FE" : "#344EAD",
-              cursor: submitting ? "not-allowed" : "pointer",
+              backgroundColor: submitCase.pending ? "#C7D2FE" : "#344EAD",
+              cursor: "pointer",
             }}
           >
-            {submitting ? (
+            {submitCase.pending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 {t("processingPayment")}
