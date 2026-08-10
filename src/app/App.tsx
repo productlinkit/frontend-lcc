@@ -20,6 +20,7 @@ import { NewsDetailPage } from "./components/NewsDetailPage";
 
 export type { Lang } from "./i18n";
 
+
 // Tabs that require login. Service & Wallet are browsable without login (Wallet
 // shows an empty state); applying for a service or using a wallet action sends
 // the user to login first, then back to the intended destination.
