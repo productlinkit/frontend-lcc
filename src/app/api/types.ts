@@ -316,6 +316,18 @@ export interface CitizenSession {
   tokens: AuthTokens;
 }
 
+/**
+ * A sign-in opened through a Google account.
+ *
+ * `registered` means this sign-in created the account rather than found one.
+ * Such an account has no phone number and is not verified yet, so the app
+ * should send the citizen to complete their profile instead of straight to the
+ * home screen.
+ */
+export interface GoogleSession extends CitizenSession {
+  registered: boolean;
+}
+
 export interface OTPChallenge {
   phone: string;
   purpose: string;

@@ -27,6 +27,7 @@ import type {
   FaqItem,
   FeeQuote,
   FormSchema,
+  GoogleSession,
   HelpArticle,
   HomeSummary,
   LifeEvent,
@@ -73,6 +74,11 @@ export const auth = {
 
   loginWithEID: (body: { eid_token?: string; national_id_no?: string }) =>
     api.post<CitizenSession>("/auth/citizen/login/eid", body, { anonymous: true }),
+
+  // id_token is the credential Google handed the browser. The server verifies
+  // it against Google's keys — nothing here is trusted on the client's word.
+  loginWithGoogle: (body: { id_token: string }) =>
+    api.post<GoogleSession>("/auth/citizen/login/google", body, { anonymous: true }),
 
   forgotPassword: (body: { phone: string }) =>
     api.post<OTPChallenge>("/auth/citizen/forgot-password", body, { anonymous: true }),

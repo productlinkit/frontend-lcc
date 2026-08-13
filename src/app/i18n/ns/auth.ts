@@ -38,6 +38,7 @@ export const auth = ns({
     signIn: "Sign In",
     orContinueWith: "or continue with",
     continueWithGoogle: "Continue with Google",
+    googleUnavailable: "Google sign-in is unavailable right now",
     noAccount: "Don't have an account?",
 
     // Register fields
@@ -123,6 +124,7 @@ export const auth = ns({
     signIn: "ເຂົ້າສູ່ລະບົບ",
     orContinueWith: "ຫຼື ສືບຕໍ່ດ້ວຍ",
     continueWithGoogle: "ສືບຕໍ່ດ້ວຍ Google",
+    googleUnavailable: "ຂະນະນີ້ ບໍ່ສາມາດເຂົ້າສູ່ລະບົບດ້ວຍ Google ໄດ້",
     noAccount: "ຍັງບໍ່ມີບັນຊີ?",
 
     // Register fields

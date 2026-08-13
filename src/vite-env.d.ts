@@ -41,6 +41,14 @@ declare module "figma:asset/*" {
 // it defaults to http://localhost:8080/api/v1 when unset.
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  /**
+   * The Google OAuth client id, which must match GOOGLE_CLIENT_ID on the
+   * server — the server checks that every ID token was addressed to it. A
+   * client id is public by design; the client *secret* is not, and this flow
+   * has no use for one. Leave this unset and the Google button explains that
+   * sign-in is unavailable rather than failing on click.
+   */
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
 }
 
 interface ImportMeta {
