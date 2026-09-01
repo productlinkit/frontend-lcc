@@ -6,6 +6,7 @@
  * at runtime.
  */
 
+
 import { api, type Paged, type QueryValue } from "./client";
 import type {
   ApplicationDetail,
